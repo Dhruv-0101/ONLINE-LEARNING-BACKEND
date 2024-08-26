@@ -33,6 +33,7 @@ const usersController = {
         username,
         email,
         password: hashedPassword,
+        role: "student",
       });
 
       await newUser.save();
@@ -42,6 +43,51 @@ const usersController = {
           name: newUser.name,
           email: newUser.email,
           // You can also generate a token here if you're implementing JWT
+        });
+      } else {
+        res.status(400);
+        throw new Error("Invalid user data");
+      }
+    } catch (error) {
+      throw new Error(error);
+    }
+  }),
+
+  registerInstructor: asyncHandler(async (req, res) => {
+    try {
+      const { username, email, password } = req.body;
+
+      // Validate user input
+      if (!username || !email || !password) {
+        res.status(400);
+        throw new Error("Please add all fields");
+      }
+
+      // Check if user already exists
+      const userExists = await User.findOne({ email });
+      if (userExists) {
+        res.status(400);
+        throw new Error("User already exists");
+      }
+
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      // Create user
+      const newUser = new User({
+        username,
+        email,
+        password: hashedPassword,
+        role: "instructor",
+      });
+
+      await newUser.save();
+      if (newUser) {
+        res.status(201).json({
+          _id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
         });
       } else {
         res.status(400);

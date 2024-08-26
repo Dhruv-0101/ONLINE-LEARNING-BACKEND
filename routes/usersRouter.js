@@ -6,6 +6,8 @@ const usersRouter = express.Router();
 
 // Register route
 usersRouter.post("/register", usersController.register);
+usersRouter.post("/registerInstructor", usersController.registerInstructor);
+
 // user profile
 usersRouter.get("/profile", isAuthenticated, usersController.profile);
 usersRouter.post("/login", usersController.login);
