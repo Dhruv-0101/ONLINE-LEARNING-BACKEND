@@ -67,6 +67,10 @@ const courseController = {
       .populate({
         path: "sections",
         model: "CourseSection",
+        populate: {
+          path: "videos", // Ensure that this field is populated, even though it's embedded.
+          model: "Video", // Optional: If you had a separate model for videos, but in this case, it's embedded.
+        },
       })
       .populate({
         path: "user",
