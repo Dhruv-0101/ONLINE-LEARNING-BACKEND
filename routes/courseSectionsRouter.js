@@ -13,7 +13,11 @@ courseSection.post(
   courseSectionsController.createSection
 );
 //get all courses
-courseSection.get("/", courseSectionsController.getAllSections);
+courseSection.get(
+  "/",
+  isAuthenticated,
+  courseSectionsController.getAllSections
+);
 
 //get a single course
 courseSection.get("/:sectionId", courseSectionsController.getSectionById);

@@ -62,12 +62,21 @@ const courseSectionsController = {
       return res.status(400).json({ message: "Please provide section name" });
     }
 
+    // Assuming req.user contains the authenticated user's details
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: User not found" });
+    }
+
     const course = await Course.findById(courseId);
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    const section = new CourseSection({ sectionName });
+    const section = new CourseSection({
+      sectionName,
+      createdBy: userId, // Add the user ID to the createdBy field
+    });
 
     if (req.files && req.files.length > 0) {
       try {
@@ -97,8 +106,24 @@ const courseSectionsController = {
 
   //get all sections
   getAllSections: asyncHandler(async (req, res) => {
-    const sections = await CourseSection.find({});
-    res.json(sections);
+    // const sections = await CourseSection.find({});
+    // res.json(sections);
+    try {
+      const userId = req.user._id;
+
+      // Ensure userId is provided
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      // Find sections created by the specified user
+      let sections = await CourseSection.find({ createdBy: userId });
+
+      // Respond with the filtered sections
+      res.json(sections);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
   }),
   // Get a single section
   getSectionById: asyncHandler(async (req, res) => {
