@@ -10,7 +10,18 @@ const sectionSchema = new mongoose.Schema(
         completed: Boolean,
       },
     ],
-
+    videos: [
+      {
+        url: {
+          type: String,
+          required: true,
+        },
+        public_id: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
     estimatedTime: Number,
     isCompleted: {
       type: Boolean,

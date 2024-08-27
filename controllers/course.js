@@ -6,7 +6,7 @@ const User = require("../models/User");
 const courseController = {
   // Create a new course
   createCourse: asyncHandler(async (req, res) => {
-    const { title, description, difficulty, duration, category } = req.body;
+    const { title, description, difficulty, duration } = req.body;
     //find the user
     const userFound = await User.findById(req.user._id);
     if (!userFound) {

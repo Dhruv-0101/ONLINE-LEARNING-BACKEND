@@ -2,15 +2,14 @@ const express = require("express");
 const courseSectionsController = require("../controllers/sections");
 const { isAuthenticated } = require("../middlewares/isAuthenticated");
 const { isInstructor } = require("../middlewares/roleAccessMiddleware");
-
-//course Router
+const upload = require("../middlewares/upload"); // Import multer middleware
 const courseSection = express.Router();
 
-//create course section
 courseSection.post(
   "/:courseId",
   isAuthenticated,
   isInstructor,
+  upload,
   courseSectionsController.createSection
 );
 //get all courses

@@ -2,47 +2,99 @@ const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const CourseSection = require("../models/CourseSection");
 const Course = require("../models/Course");
+const cloudinary = require("../utils/cloudinaryConfig");
+
+const uploadVideos = async (files) => {
+  const uploadPromises = files.map((file) =>
+    cloudinary.uploader.upload(file.path, {
+      resource_type: "video",
+      folder: "course_videos",
+    })
+  );
+  return Promise.all(uploadPromises);
+};
 const courseSectionsController = {
-  // Create a new section
+  // createSection: asyncHandler(async (req, res) => {
+  //   //section name
+  //   const { sectionName } = req.body;
+  //   //course id
+  //   const { courseId } = req.params;
+  //   //validate mongoose id
+  //   if (!mongoose.isValidObjectId(courseId)) {
+  //     res.status(400);
+  //     throw new Error("Invalid course id");
+  //   }
+  //   //find course
+  //   const course = await Course.findById(courseId);
+  //   // Validate course input
+  //   if (!course) {
+  //     res.status(404);
+  //     throw new Error("Course not found");
+  //   }
+  //   // Validate section input
+  //   if (!sectionName) {
+  //     res.status(400);
+  //     throw new Error("Please provide section name");
+  //   }
+
+  //   // Create section
+  //   const section = await CourseSection.create({
+  //     sectionName,
+  //   });
+  //   // Add section to course
+  //   course.sections.push(section._id);
+  //   await course.save({
+  //     validateBeforeSave: false,
+  //   });
+  //   //send response
+  //   res.status(201).json({
+  //     status: "success",
+  //     data: section,
+  //     message: "Section created successfully",
+  //   });
+  // }),
+
   createSection: asyncHandler(async (req, res) => {
-    //section name
     const { sectionName } = req.body;
-    //course id
     const { courseId } = req.params;
-    //validate mongoose id
-    if (!mongoose.isValidObjectId(courseId)) {
-      res.status(400);
-      throw new Error("Invalid course id");
-    }
-    //find course
-    const course = await Course.findById(courseId);
-    // Validate course input
-    if (!course) {
-      res.status(404);
-      throw new Error("Course not found");
-    }
-    // Validate section input
+
     if (!sectionName) {
-      res.status(400);
-      throw new Error("Please provide section name");
+      return res.status(400).json({ message: "Please provide section name" });
     }
 
-    // Create section
-    const section = await CourseSection.create({
-      sectionName,
-    });
-    // Add section to course
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const section = new CourseSection({ sectionName });
+
+    if (req.files && req.files.length > 0) {
+      try {
+        const uploadResults = await uploadVideos(req.files);
+        section.videos = uploadResults.map(({ secure_url, public_id }) => ({
+          url: secure_url,
+          public_id,
+        }));
+      } catch (error) {
+        return res
+          .status(500)
+          .json({ message: "Video upload failed", error: error.message });
+      }
+    }
+
+    await section.save();
+
     course.sections.push(section._id);
-    await course.save({
-      validateBeforeSave: false,
-    });
-    //send response
+    await course.save();
+
     res.status(201).json({
       status: "success",
       data: section,
       message: "Section created successfully",
     });
   }),
+
   //get all sections
   getAllSections: asyncHandler(async (req, res) => {
     const sections = await CourseSection.find({});
