@@ -14,86 +14,77 @@ const uploadVideos = async (files) => {
   return Promise.all(uploadPromises);
 };
 const courseSectionsController = {
-  // createSection: asyncHandler(async (req, res) => {
-  //   //section name
-  //   const { sectionName } = req.body;
-  //   //course id
-  //   const { courseId } = req.params;
-  //   //validate mongoose id
-  //   if (!mongoose.isValidObjectId(courseId)) {
-  //     res.status(400);
-  //     throw new Error("Invalid course id");
-  //   }
-  //   //find course
-  //   const course = await Course.findById(courseId);
-  //   // Validate course input
-  //   if (!course) {
-  //     res.status(404);
-  //     throw new Error("Course not found");
-  //   }
-  //   // Validate section input
-  //   if (!sectionName) {
-  //     res.status(400);
-  //     throw new Error("Please provide section name");
-  //   }
-
-  //   // Create section
-  //   const section = await CourseSection.create({
-  //     sectionName,
-  //   });
-  //   // Add section to course
-  //   course.sections.push(section._id);
-  //   await course.save({
-  //     validateBeforeSave: false,
-  //   });
-  //   //send response
-  //   res.status(201).json({
-  //     status: "success",
-  //     data: section,
-  //     message: "Section created successfully",
-  //   });
-  // }),
-
   createSection: asyncHandler(async (req, res) => {
     const { sectionName } = req.body;
+    const titles = req.body.titles || [];
     const { courseId } = req.params;
 
+    // Validate sectionName
     if (!sectionName) {
       return res.status(400).json({ message: "Please provide section name" });
     }
 
-    // Assuming req.user contains the authenticated user's details
+    // Check for authenticated user
     const userId = req.user?._id;
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized: User not found" });
     }
 
+    // Find the course
     const course = await Course.findById(courseId);
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
 
+    // Create a new section
     const section = new CourseSection({
       sectionName,
-      createdBy: userId, // Add the user ID to the createdBy field
+      createdBy: userId,
     });
 
+    // Handle video files
     if (req.files && req.files.length > 0) {
       try {
-        const uploadResults = await uploadVideos(req.files);
-        section.videos = uploadResults.map(({ secure_url, public_id }) => ({
-          url: secure_url,
-          public_id,
-        }));
+        if (titles.length !== req.files.length) {
+          return res.status(400).json({
+            message: "The number of titles must match the number of videos",
+          });
+        }
+
+        const uploadedVideos = await uploadVideos(req.files);
+
+        section.videos = uploadedVideos.map((result, index) => {
+          const title = titles[index];
+          if (!title) {
+            throw new Error(`Title for video ${index + 1} is required`);
+          }
+          return {
+            title,
+            url: result.secure_url,
+            public_id: result.public_id,
+          };
+        });
+
+        // Validate video URLs and public IDs
+        section.videos.forEach((video) => {
+          if (!video.url || !video.public_id) {
+            throw new Error("Video URL or public ID is missing");
+          }
+        });
       } catch (error) {
-        return res
-          .status(500)
-          .json({ message: "Video upload failed", error: error.message });
+        return res.status(500).json({
+          message: "Video upload failed",
+          error: error.message,
+        });
       }
+    } else {
+      return res
+        .status(400)
+        .json({ message: "Please upload at least one video" });
     }
 
+    // Save the section and update the course
     await section.save();
-
     course.sections.push(section._id);
     await course.save();
 
@@ -103,7 +94,6 @@ const courseSectionsController = {
       message: "Section created successfully",
     });
   }),
-
   //get all sections
   getAllSections: asyncHandler(async (req, res) => {
     // const sections = await CourseSection.find({});

@@ -12,6 +12,10 @@ const sectionSchema = new mongoose.Schema(
     ],
     videos: [
       {
+        title: {
+          type: String,
+          required: true,
+        },
         url: {
           type: String,
           required: true,
