@@ -118,6 +118,38 @@ const courseController = {
       throw new Error("Course not found");
     }
   }),
+
+  checkApplied: asyncHandler(async (req, res) => {
+    try {
+      const { courseId } = req.body; // Ensure courseId is extracted properly
+      const studentId = req.user._id.toString(); // Convert studentId to string
+      console.log(courseId);
+      // Validate courseId format
+      // if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      //   return res.status(400).json({ message: "Invalid course ID" });
+      // }
+
+      // Find the course by ID
+      const course = await Course.findById(courseId);
+
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+
+      // Check if studentId is in the students array
+      const isEnrolled = course.students.includes(studentId);
+
+      return res.status(200).json({
+        isEnrolled,
+        message: isEnrolled
+          ? "Student is already enrolled"
+          : "Student is not enrolled",
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Server error" });
+    }
+  }),
 };
 
 module.exports = courseController;

@@ -255,9 +255,10 @@ const usersController = {
   }),
   // user profile
   profile: asyncHandler(async (req, res) => {
-    const { id } = req.user;
+    console.log("hii from profile");
+    const userId = req.user._id;
     const courseIdParam = req.query.courseId; // Get the course ID from the request query
-    const user = await User.findById(id).populate({
+    const user = await User.findById(userId).populate({
       path: "progress",
       populate: [
         {

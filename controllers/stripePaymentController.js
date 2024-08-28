@@ -109,7 +109,7 @@ const stripePaymentController = {
       });
 
       if (newPayment) {
-        userFound.progress.push({ courseIdFound, sections: [] });
+        userFound.progress.push({ courseId: courseIdFound, sections: [] });
         await userFound.save({
           validateBeforeSave: false,
         });

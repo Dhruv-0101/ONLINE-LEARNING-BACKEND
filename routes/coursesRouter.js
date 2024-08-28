@@ -21,5 +21,11 @@ courseRouter.put("/:courseId", isInstructor, courseController.update);
 courseRouter.delete("/:courseId", isInstructor, courseController.delete);
 //get a single course
 courseRouter.get("/:courseId", courseController.getCourseById);
+//check applied
+courseRouter.post(
+  "/checkinrolled",
+  isAuthenticated,
+  courseController.checkApplied
+);
 
 module.exports = courseRouter;
