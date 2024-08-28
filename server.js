@@ -8,6 +8,8 @@ const cookieParser = require("cookie-parser");
 const coursesRouter = require("./routes/coursesRouter");
 const courseSectionsRouter = require("./routes/courseSectionsRouter");
 const progressRouter = require("./routes/progressRouter");
+const stripePaymentRouter = require("./routes/stripePaymentRouter");
+
 connectDB();
 const app = express();
 // Middleware
@@ -26,6 +28,7 @@ app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/courses", coursesRouter);
 app.use("/api/v1/course-sections", courseSectionsRouter);
 app.use("/api/v1/progress", progressRouter);
+app.use("/api/v1/stripe", stripePaymentRouter);
 
 //--Error handling middleware---
 app.use(errorHandler);

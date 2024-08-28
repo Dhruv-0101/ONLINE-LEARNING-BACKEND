@@ -9,6 +9,10 @@ const courseSchema = new mongoose.Schema(
     sections: [{ type: mongoose.Schema.Types.ObjectId, ref: "CourseSection" }],
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     students: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    price: {
+      type: Number,
+      default: 0,
+    },
   },
 
   {
