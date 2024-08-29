@@ -135,6 +135,7 @@ const usersController = {
       _id: user.id,
       name: user.name,
       email: user.email,
+      role: user.role,
       // No need to send the token in the response body
     });
   }),
