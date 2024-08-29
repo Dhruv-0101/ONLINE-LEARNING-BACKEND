@@ -19,7 +19,7 @@ progressRouter.post(
 progressRouter.put(
   "/update",
   isAuthenticated,
-  isAdmin,
+  // isAdmin,
   progressController.updateSectionProgress
 );
 //start section
