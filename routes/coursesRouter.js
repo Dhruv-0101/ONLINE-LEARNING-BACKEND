@@ -27,5 +27,11 @@ courseRouter.post(
   isAuthenticated,
   courseController.checkApplied
 );
+//check all course enrolled
+courseRouter.post(
+  "/checkallcourseinrolled",
+  isAuthenticated,
+  courseController.checkAllCoursesApplied
+);
 
 module.exports = courseRouter;

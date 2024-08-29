@@ -150,6 +150,20 @@ const courseController = {
       return res.status(500).json({ message: "Server error" });
     }
   }),
+  checkAllCoursesApplied: asyncHandler(async (req, res) => {
+    const userId = req.user._id.toString();
+
+    const courses = await Course.find({ students: userId });
+
+    if (courses.length === 0) {
+      // return res
+      //   .status(404)
+      //   .json({ message: "No courses found for this user" });
+      throw new Error("no course found");
+    }
+
+    res.status(200).json(courses);
+  }),
 };
 
 module.exports = courseController;
