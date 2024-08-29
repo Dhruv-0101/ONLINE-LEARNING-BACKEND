@@ -179,6 +179,7 @@ const usersController = {
             ? parseFloat(((sectionsCompleted / totalSections) * 100).toFixed(1))
             : 0;
 
+            console.log("logi error still continued ")
         return {
           id: user._id,
           name: user.name,
