@@ -7,7 +7,8 @@ const Review = require("../models/review");
 const courseController = {
   // Create a new course
   createCourse: asyncHandler(async (req, res) => {
-    const { title, description, difficulty, duration } = req.body;
+    const { title, description, difficulty, duration, communityLink, price } =
+      req.body;
     //find the user
     const userFound = await User.findById(req.user._id);
     if (!userFound) {
@@ -40,7 +41,9 @@ const courseController = {
       description,
       difficulty,
       duration,
+      communityLink,
       user: req.user._id,
+      price,
     });
     //push course into user courses
     userFound.coursesCreated.push(course._id);

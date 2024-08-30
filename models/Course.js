@@ -19,6 +19,7 @@ const courseSchema = new mongoose.Schema(
         ref: "Review",
       },
     ],
+    communityLink: { type: String },
   },
 
   {
