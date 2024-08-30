@@ -30,5 +30,20 @@ courseSection.delete(
   isInstructor,
   courseSectionsController.delete
 );
+courseSection.post(
+  "/videos/comments",
+  isAuthenticated,
+  courseSectionsController.addCommentToVideo
+);
+courseSection.post(
+  "/videos/getcomments/:videoId",
+  isAuthenticated,
+  courseSectionsController.getAllCommentsForVideo
+);
+courseSection.post(
+  "/videos/comments/reply/:commentId",
+  isAuthenticated,
+  courseSectionsController.replyToComment
+);
 
 module.exports = courseSection;

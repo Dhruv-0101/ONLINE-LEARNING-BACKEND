@@ -3,6 +3,7 @@ const asyncHandler = require("express-async-handler");
 const CourseSection = require("../models/CourseSection");
 const Course = require("../models/Course");
 const cloudinary = require("../utils/cloudinaryConfig");
+const Comment = require("../models/Comment");
 
 const uploadVideos = async (files) => {
   const uploadPromises = files.map((file) =>
@@ -156,6 +157,115 @@ const courseSectionsController = {
     throw new Error(
       "Section cannot be deleted because it's associated with a course. you can only update it"
     );
+  }),
+
+  addCommentToVideo: asyncHandler(async (req, res) => {
+    const { videoId, commentText } = req.body;
+    const userId = req.user._id;
+
+    const courseSection = await CourseSection.findOne({
+      "videos._id": videoId,
+    });
+
+    if (!courseSection) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    // Create a new comment
+    const newComment = new Comment({
+      user: userId,
+      video: videoId,
+      commentText: commentText,
+    });
+
+    // Save the comment to the database
+    const savedComment = await newComment.save();
+
+    // Add the comment reference to the video's comments array
+    const video = courseSection.videos.id(videoId);
+    video.comments.push(savedComment._id);
+
+    // Save the updated course section
+    await courseSection.save();
+
+    res
+      .status(201)
+      .json({ message: "Comment added successfully", comment: savedComment });
+  }),
+
+  getAllCommentsForVideo: asyncHandler(async (req, res) => {
+    try {
+      const { videoId } = req.params;
+
+      // Find the course section that contains the video
+      const courseSection = await CourseSection.findOne({
+        "videos._id": videoId,
+      })
+        .populate({
+          path: "videos.comments",
+          populate: { path: "user", select: "username" }, // Populate user information for comments
+        })
+        .populate({
+          path: "videos.comments",
+          populate: { path: "replies.user", select: "username" }, // Populate user information for replies
+        });
+
+      if (!courseSection) {
+        return res.status(404).json({ error: "Video not found" });
+      }
+
+      // Find the specific video within the section
+      const video = courseSection.videos.id(videoId);
+
+      if (!video) {
+        return res.status(404).json({ error: "Video not found" });
+      }
+
+      // Respond with the comments for the video
+      res.status(200).json(video.comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }),
+
+  replyToComment: asyncHandler(async (req, res) => {
+    const { commentId } = req.params; // ID of the comment being replied to
+    const { replyText } = req.body; // The reply text
+    console.log(replyText);
+    const userId = req.user._id; // ID of the user replying
+
+    // Find the comment being replied to
+    const comment = await Comment.findById(commentId).populate(
+      "user",
+      "username"
+    );
+
+    if (!comment) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    // Check if the user is trying to reply to their own comment
+    if (comment.user._id.toString() === userId.toString()) {
+      // return res
+      //   .status(401)
+      //   .json({ error: "You cannot reply to your own comment" });
+      throw new Error("You cannot reply to your own comment");
+    }
+
+    // Create a new reply object
+    const reply = {
+      replyText: replyText,
+      user: userId, // Assuming userId is the ID of the user replying
+      createdAt: new Date(),
+    };
+
+    // Add the reply to the comment's replies array
+    comment.replies.push(reply);
+    await comment.save();
+
+    // Send the updated comment back as the response
+    res.status(200).json(comment);
   }),
 };
 
