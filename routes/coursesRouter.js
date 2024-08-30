@@ -33,5 +33,10 @@ courseRouter.post(
   isAuthenticated,
   courseController.checkAllCoursesApplied
 );
+courseRouter.post(
+  "/createreview/:courseId",
+  isAuthenticated,
+  courseController.createReview
+);
 
 module.exports = courseRouter;

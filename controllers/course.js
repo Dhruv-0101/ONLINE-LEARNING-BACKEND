@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 
 const Course = require("../models/Course");
 const User = require("../models/User");
+const Review = require("../models/review");
 
 const courseController = {
   // Create a new course
@@ -54,11 +55,19 @@ const courseController = {
   }),
   // Get all courses
   getAllCourses: asyncHandler(async (req, res) => {
-    const courses = await Course.find({}).populate({
-      path: "user",
-      model: "User",
-      select: "username email",
-    });
+    const courses = await Course.find({})
+      .populate({
+        path: "user",
+        model: "User",
+        select: "username email",
+      })
+      .populate({
+        path: "reviews",
+        populate: {
+          path: "user",
+          select: "fullname",
+        },
+      });
     res.json(courses);
   }),
   // Get a single course
@@ -163,6 +172,58 @@ const courseController = {
     }
 
     res.status(200).json(courses);
+  }),
+  createReview: asyncHandler(async (req, res) => {
+    const { message, rating } = req.body;
+    const { courseId } = req.params;
+
+    // 1. Find the course and populate reviews
+    const course = await Course.findById(courseId).populate("reviews");
+    if (!course) {
+      res.status(404);
+      throw new Error("Course not found");
+    }
+
+    const userId = req?.user?._id;
+    if (!userId) {
+      res.status(400);
+      throw new Error("User ID is required");
+    }
+
+    // 2. Check if user is enrolled in the course
+    const isEnrolled = course?.students?.some(
+      (studentId) => studentId?.toString() === userId.toString()
+    );
+    if (!isEnrolled) {
+      res.status(403);
+      throw new Error("Please enroll in the course before leaving a review");
+    }
+
+    // 3. Check if the user has already reviewed this course
+    const hasReviewed = course?.reviews?.some(
+      (review) => review?.user?.toString() === userId.toString()
+    );
+    if (hasReviewed) {
+      res.status(400);
+      throw new Error("You have already reviewed this course");
+    }
+
+    // 4. Create a new review
+    const review = await Review.create({
+      message,
+      rating,
+      course: course._id,
+      user: userId,
+    });
+
+    // 5. Add review to the course
+    course.reviews.push(review._id);
+    await course.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Review created successfully",
+    });
   }),
 };
 
