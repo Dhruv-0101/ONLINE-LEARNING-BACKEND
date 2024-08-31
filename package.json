@@ -19,8 +19,8 @@
     "start": "node server.js",
     "server": "nodemon server.js"
   },
-  "name": "dev-journey-backend",
-  "description": "Personalized Pathways in Tech Learning for students taking our fullstack mern course",
+  "name": "E-Learning Platform",
+  "description": "",
   "version": "1.0.0",
   "main": "server.js",
   "keywords": [],
