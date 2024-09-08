@@ -4,6 +4,8 @@ const CourseSection = require("../models/CourseSection");
 const Course = require("../models/Course");
 const cloudinary = require("../utils/cloudinaryConfig");
 const Comment = require("../models/Comment");
+const Question = require("../models/Question");
+const Exam = require("../models/Exam");
 
 const uploadVideos = async (files) => {
   const uploadPromises = files.map((file) =>
@@ -266,6 +268,279 @@ const courseSectionsController = {
 
     // Send the updated comment back as the response
     res.status(200).json(comment);
+  }),
+
+  createExam: asyncHandler(async (req, res) => {
+    try {
+      const { name, description, questions, sectionId, score, students } =
+        req.body;
+
+      // Validate required fields
+      if (!name || !description || !questions || !sectionId || !score) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Create Exam document
+      const newExam = new Exam({
+        name,
+        description,
+        sectionId,
+        score,
+        students,
+        createdBy: req.user._id,
+      });
+
+      const savedExam = await newExam.save();
+
+      const questionDocs = questions.map((q) => ({
+        question: q.question,
+        optionA: q.optionA,
+        optionB: q.optionB,
+        optionC: q.optionC,
+        optionD: q.optionD,
+        correctAnswer: q.correctAnswer,
+        createdBy: req.user._id, // Assuming user ID is available from request
+      }));
+
+      // Create Question documents
+      const savedQuestions = await Question.insertMany(questionDocs);
+
+      // Update the exam with the created questions
+      savedExam.questions = savedQuestions.map((q) => q._id);
+      await savedExam.save();
+
+      // Respond with the created exam
+      res.status(201).json({
+        message: "Exam created successfully",
+        exam: savedExam,
+      });
+    } catch (error) {
+      console.error("Error creating exam:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }),
+
+  getExam: asyncHandler(async (req, res) => {
+    try {
+      const { sectionId } = req.params;
+      console.log(sectionId);
+
+      // Find exams by sectionId and populate the questions
+      const exams = await Exam.findOne({ sectionId }).populate({
+        path: "questions",
+        select: "question optionA optionB optionC optionD correctAnswer", // Customize the fields to return
+      });
+      // .exec();
+
+      if (exams.length === 0) {
+        return res
+          .status(404)
+          .json({ message: "No exams found for this section" });
+      }
+
+      res.json(exams);
+    } catch (error) {
+      console.error("Error fetching exams by sectionId:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }),
+
+  submitExam: asyncHandler(async (req, res) => {
+    const { sectionId, answers } = req.body;
+    const studentId = req.user._id; // Ensure req.user is populated by authentication middleware
+
+    // Validate the input data
+    if (!sectionId || !answers || !Array.isArray(answers)) {
+      return res.status(400).json({ message: "Invalid input data" });
+    }
+
+    // Find the exam and populate its questions
+    const exam = await Exam.findOne({ sectionId }).populate("questions");
+    if (!exam) {
+      return res.status(404).json({ message: "Exam not found" });
+    }
+
+    // Create a map of questions with their correct answers
+    const correctAnswers = {};
+    for (const question of exam.questions) {
+      correctAnswers[question._id] = question.correctAnswer;
+    }
+
+    // Validate and check each answer
+    let totalScore = 0;
+    const studentAnswers = answers.map((answer) => {
+      const correctAnswer = correctAnswers[answer.questionId];
+      const isCorrect = correctAnswer === answer.selectedOption;
+      if (isCorrect) {
+        totalScore += 1; // Increment score for each correct answer
+      }
+      return {
+        questionId: answer.questionId,
+        selectedOption: answer.selectedOption,
+        isCorrect,
+      };
+    });
+
+    // Check if the student already exists in the students array
+    const existingStudentIndex = exam.students.findIndex(
+      (s) => s.studentId.toString() === studentId.toString()
+    );
+
+    if (existingStudentIndex !== -1) {
+      // Update existing student's answers and score
+      await Exam.findOneAndUpdate(
+        { sectionId, "students.studentId": studentId },
+        {
+          $set: {
+            "students.$.answers": studentAnswers,
+            "students.$.score": totalScore,
+          },
+        },
+        { new: true }
+      );
+    } else {
+      // Add new student record with answers and score
+      await Exam.findByIdAndUpdate(
+        exam._id, // Use exam._id here instead of sectionId
+        {
+          $push: {
+            students: {
+              studentId,
+              answers: studentAnswers,
+              score: totalScore,
+            },
+          },
+        },
+        { new: true }
+      );
+    }
+
+    res
+      .status(200)
+      .json({ message: "Exam submitted successfully", score: totalScore });
+  }),
+
+  // revealExam: asyncHandler(async (req, res) => {
+  //   const studentId = req.user._id.toString(); // Ensure req.user is populated by authentication middleware
+  //   const { sectionId } = req.params; // Assuming sectionId is passed as a parameter
+  //   console.log("hiii", studentId);
+  //   console.log("hello", sectionId);
+
+  //   // Find all exams that belong to the specified sectionId
+  //   const exams = await Exam.find({
+  //     sectionId: sectionId,
+  //     "students.studentId": studentId,
+  //   })
+  //     .populate("questions") // Populate questions for each exam
+  //     // .lean(); // Convert to plain JavaScript objects
+
+  //   console.log(exams);
+
+  //   if (!exams.length) {
+  //     return res
+  //       .status(404)
+  //       .json({ message: "No exams found for the student in this section" });
+  //   }
+
+  //   // Map over the exams and format the response
+  //   const formattedExams = exams.map((exam) => {
+  //     // Find the student's record in this exam
+  //     const studentRecord = exam.students.find(
+  //       (s) => s.studentId.toString() === studentId.toString()
+  //     );
+
+  //     // Map over the questions and include student's answers and correct answers
+  //     const examDetails = {
+  //       examId: exam._id,
+  //       name: exam.name,
+  //       description: exam.description,
+  //       sectionId: exam.sectionId,
+  //       score: studentRecord.score,
+  //       answers: studentRecord.answers.map((studentAnswer) => {
+  //         const question = exam.questions.find(
+  //           (q) => q._id.toString() === studentAnswer.questionId.toString()
+  //         );
+  //         return {
+  //           questionId: studentAnswer.questionId,
+  //           questionText: question.text, // Adjust this to match your question schema
+  //           correctAnswer: question.correctAnswer,
+  //           selectedOption: studentAnswer.selectedOption,
+  //           isCorrect: studentAnswer.isCorrect,
+  //         };
+  //       }),
+  //     };
+
+  //     return examDetails; // Accumulate the exam details in the formatted array
+  //   });
+
+  //   // Return the formatted exams
+  //   res
+  //     .status(200)
+  //     .json({ message: "Exams fetched successfully", exams: formattedExams });
+  // }),
+  revealExam: asyncHandler(async (req, res) => {
+    const studentId = req.user._id.toString(); // Ensure req.user is populated by authentication middleware
+    const { sectionId } = req.params; // Assuming sectionId is passed as a parameter
+    console.log("hiii", studentId);
+    console.log("hello", sectionId);
+
+    // Find all exams that belong to the specified sectionId
+    const exams = await Exam.find({
+      sectionId: sectionId,
+      "students.studentId": studentId,
+    }).populate("questions"); // Populate questions for each exam
+    // .lean(); // Convert to plain JavaScript objects
+
+    console.log(exams);
+
+    if (!exams.length) {
+      return res
+        .status(404)
+        .json({ message: "No exams found for the student in this section" });
+    }
+
+    // Map over the exams and format the response
+    const formattedExams = exams.map((exam) => {
+      // Find the student's record in this exam
+      const studentRecord = exam.students.find(
+        (s) => s.studentId.toString() === studentId.toString()
+      );
+
+      // Map over the questions and include student's answers and correct answers
+      const examDetails = {
+        examId: exam._id,
+        name: exam.name,
+        description: exam.description,
+        sectionId: exam.sectionId,
+        score: studentRecord.score,
+        answers: studentRecord.answers.map((studentAnswer) => {
+          const question = exam.questions.find(
+            (q) => q._id.toString() === studentAnswer.questionId.toString()
+          );
+          return {
+            questionId: studentAnswer.questionId,
+            questionText: question.text, // Adjust this to match your question schema
+            correctAnswer: question.correctAnswer,
+            selectedOption: studentAnswer.selectedOption,
+            isCorrect: studentAnswer.isCorrect,
+            question: question,
+            options: {
+              A: question.optionA,
+              B: question.optionB,
+              C: question.optionC,
+              D: question.optionD,
+            },
+          };
+        }),
+      };
+
+      return examDetails; // Accumulate the exam details in the formatted array
+    });
+
+    // Return the formatted exams
+    res
+      .status(200)
+      .json({ message: "Exams fetched successfully", exams: formattedExams });
   }),
 };
 

@@ -37,6 +37,11 @@ const sectionSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    exam: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Exam",
+      required: false,
+    },
   },
   {
     timestamps: true,

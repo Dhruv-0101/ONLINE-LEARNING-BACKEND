@@ -6,12 +6,19 @@ const upload = require("../middlewares/upload"); // Import multer middleware
 const courseSection = express.Router();
 
 courseSection.post(
+  "/submit-exam",
+  isAuthenticated,
+  courseSectionsController.submitExam
+);
+
+courseSection.post(
   "/:courseId",
   isAuthenticated,
   isInstructor,
   upload,
   courseSectionsController.createSection
 );
+
 //get all courses
 courseSection.get(
   "/",
@@ -44,6 +51,27 @@ courseSection.post(
   "/videos/comments/reply/:commentId",
   isAuthenticated,
   courseSectionsController.replyToComment
+);
+courseSection.post(
+  "/create-exam/give-exam",
+  isAuthenticated,
+  isInstructor,
+  courseSectionsController.createExam
+);
+courseSection.get(
+  "/get-exam/:sectionId",
+  isAuthenticated,
+  courseSectionsController.getExam
+);
+// courseSection.post(
+//   "/give-exam",
+//   isAuthenticated,
+//   courseSectionsController.submitExam
+// );
+courseSection.get(
+  "/reveal-exam/:sectionId",
+  isAuthenticated,
+  courseSectionsController.revealExam
 );
 
 module.exports = courseSection;
