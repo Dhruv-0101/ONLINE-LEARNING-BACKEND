@@ -38,7 +38,7 @@ const questionSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // Adds createdAt and updatedAt timestamps
+    timestamps: true, 
   }
 );
 

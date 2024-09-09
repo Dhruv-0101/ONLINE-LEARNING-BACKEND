@@ -6,142 +6,105 @@ const User = require("../models/User");
 const Course = require("../models/Course");
 
 const usersController = {
-  //--register user
   register: asyncHandler(async (req, res) => {
-    try {
-      const { username, email, password } = req.body;
+    const { username, email, password } = req.body;
 
-      // Validate user input
-      if (!username || !email || !password) {
-        res.status(400);
-        throw new Error("Please add all fields");
-      }
+    if (!username || !email || !password) {
+      res.status(400);
+      throw new Error("Please add all fields");
+    }
 
-      // Check if user already exists
-      const userExists = await User.findOne({ email });
-      if (userExists) {
-        res.status(400);
-        throw new Error("User already exists");
-      }
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      res.status(400);
+      throw new Error("User already exists");
+    }
 
-      // Hash password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-      // Create user
-      const newUser = new User({
-        username,
-        email,
-        password: hashedPassword,
-        role: "student",
+    const newUser = new User({
+      username,
+      email,
+      password: hashedPassword,
+      role: "student",
+    });
+
+    await newUser.save();
+    if (newUser) {
+      res.status(201).json({
+        _id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
       });
-
-      await newUser.save();
-      if (newUser) {
-        res.status(201).json({
-          _id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          // You can also generate a token here if you're implementing JWT
-        });
-      } else {
-        res.status(400);
-        throw new Error("Invalid user data");
-      }
-    } catch (error) {
-      throw new Error(error);
+    } else {
+      res.status(400);
+      throw new Error("Invalid user data");
     }
   }),
-
   registerInstructor: asyncHandler(async (req, res) => {
-    try {
-      const { username, email, password } = req.body;
+    const { username, email, password } = req.body;
 
-      // Validate user input
-      if (!username || !email || !password) {
-        res.status(400);
-        throw new Error("Please add all fields");
-      }
+    if (!username || !email || !password) {
+      res.status(400);
+      throw new Error("Please add all fields");
+    }
 
-      // Check if user already exists
-      const userExists = await User.findOne({ email });
-      if (userExists) {
-        res.status(400);
-        throw new Error("User already exists");
-      }
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      res.status(400);
+      throw new Error("User already exists");
+    }
 
-      // Hash password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-      // Create user
-      const newUser = new User({
-        username,
-        email,
-        password: hashedPassword,
-        role: "instructor",
+    const newUser = new User({
+      username,
+      email,
+      password: hashedPassword,
+      role: "instructor",
+    });
+
+    await newUser.save();
+    if (newUser) {
+      res.status(201).json({
+        _id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
       });
-
-      await newUser.save();
-      if (newUser) {
-        res.status(201).json({
-          _id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-        });
-      } else {
-        res.status(400);
-        throw new Error("Invalid user data");
-      }
-    } catch (error) {
-      throw new Error(error);
+    } else {
+      res.status(400);
+      throw new Error("Invalid user data");
     }
   }),
-
-  //---login user
   login: asyncHandler(async (req, res) => {
     const { email, password } = req.body;
-    console.log("req.body", req.body);
-    // Check for user email
     const user = await User.findOne({ email });
     if (!user) {
-      // res.status(401);
       throw new Error("Invalid email or password");
     }
 
-    // Check if password matches
-    // const isMatch = await bcrypt.compare(password, user.password);
-
-    // if (!isMatch) {
-    //   res.status(401);
-    //   throw new Error("Invalid email or password");
-    // }
-
-    // User authenticated, generate a token
     const token = jwt.sign({ id: user?._id }, process.env.JWT_SECRET, {
       expiresIn: "30d", // Token expires in 30 days
     });
 
-    // Set token in HttpOnly cookie
     res.cookie("token", token, {
-      httpOnly: true, // The cookie is not accessible via JavaScript
-      secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-      sameSite: "strict", // Strictly same site
-      maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
-    // Send response
     res.json({
       _id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
-      // No need to send the token in the response body
     });
   }),
-  //get all users
   getAllUsers: asyncHandler(async (req, res) => {
-    const courseId = req.params.courseId; // Get course ID from query parameters
+    const courseId = req.params.courseId;
 
     if (!mongoose.Types.ObjectId.isValid(courseId)) {
       return res.status(400).json({ message: "Invalid course ID" });
@@ -165,12 +128,14 @@ const usersController = {
         const courseProgress = user.progress.find(
           (cp) => cp.courseId && cp.courseId._id.toString() === courseId
         );
+        console.log("courseProgress",courseProgress)
 
         if (!courseProgress) {
           return null;
         }
 
         const totalSections = courseProgress.courseId.sections.length;
+        console.log(totalSections)
         const sectionsCompleted = courseProgress.sections.filter(
           (section) => section.status === "Completed"
         ).length;
@@ -179,7 +144,6 @@ const usersController = {
             ? parseFloat(((sectionsCompleted / totalSections) * 100).toFixed(1))
             : 0;
 
-            console.log("logi error still continued ")
         return {
           id: user._id,
           name: user.name,
@@ -211,11 +175,48 @@ const usersController = {
         ["st", "nd", "rd"][((((lastRank + 90) % 100) - 10) % 10) - 1] || "th"
       }`;
     });
+    /*
+    Example Walkthrough:
+Suppose you have these users after sorting:
+
+User A: Completed 5 sections
+User B: Completed 5 sections
+User C: Completed 3 sections
+User D: Completed 2 sections
+Here's how the ranking will be assigned:
+
+Iteration 1 (User A):
+
+Sections Completed = 5
+Since lastSectionsCompleted = -1 (initial value), lastRank increments to 1.
+Rank assigned: 1st
+lastSectionsCompleted is updated to 5.
+Iteration 2 (User B):
+
+Sections Completed = 5
+Since user.sectionsCompleted === lastSectionsCompleted (both are 5), the rank stays at 1.
+Rank assigned: 1st
+Iteration 3 (User C):
+
+Sections Completed = 3
+Since user.sectionsCompleted !== lastSectionsCompleted, lastRank increments to 2.
+Rank assigned: 2nd
+lastSectionsCompleted is updated to 3.
+Iteration 4 (User D):
+
+Sections Completed = 2
+Since user.sectionsCompleted !== lastSectionsCompleted, lastRank increments to 3.
+Rank assigned: 3rd
+lastSectionsCompleted is updated to 2.
+So, the final rankings are:
+
+User A: 1st
+User B: 1st
+User C: 2nd
+User D: 3rd*/
 
     res.json(userProgressData);
   }),
-
-  //get user by id
   getUserById: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const user = await User.findById(id).populate({
@@ -235,7 +236,6 @@ const usersController = {
     }
     res.json(user);
   }),
-  //get user progress
   getUserProgress: asyncHandler(async (req, res) => {
     const { id } = req.user;
     const user = await User.findById(id).populate({
@@ -255,11 +255,9 @@ const usersController = {
     }
     res.json(user.progress);
   }),
-  // user profile
   profile: asyncHandler(async (req, res) => {
-    console.log("hii from profile");
     const userId = req.user._id;
-    const courseIdParam = req.query.courseId; // Get the course ID from the request query
+    const courseIdParam = req.query.courseId;
     const user = await User.findById(userId).populate({
       path: "progress",
       populate: [
@@ -277,13 +275,11 @@ const usersController = {
         },
       ],
     });
-    console.log("user", user);
     if (!user) {
       res.status(404);
       throw new Error("User not found");
     }
-    console.log("user", user);
-    // Filter progress for a specific course if courseIdParam is provided
+
     const courseProgress = courseIdParam
       ? user?.progress?.find(
           (p) => p.courseId?._id?.toString() === courseIdParam
@@ -316,7 +312,6 @@ const usersController = {
 
     res.json({ user, courseProgress, progressSummary });
   }),
-  //private profile
   privateProfile: asyncHandler(async (req, res) => {
     const { id } = req.user;
     const user = await User.findById(id).populate({
@@ -336,7 +331,6 @@ const usersController = {
       throw new Error("User not found");
     }
 
-    // Calculating the progress statistics for each course
     const coursesProgress = user.progress.map((courseProgress) => {
       const totalSections = courseProgress.courseId.sections.length;
       let completed = 0,
@@ -359,7 +353,6 @@ const usersController = {
       };
     });
 
-    // Preparing the response
     const response = {
       totalCourses: user.progress.length,
       coursesProgress,
@@ -367,26 +360,22 @@ const usersController = {
 
     res.json(response);
   }),
-  // Check if user is authenticated
   checkAuthenticated: asyncHandler(async (req, res) => {
     const token = req.cookies["token"];
 
     if (!token) {
       return res.status(401).json({ isAuthenticated: false });
     }
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      const user = await User.findById(decoded.id).populate({
-        path: "coursesCreated",
-      });
-      if (!user) {
-        return res.status(401).json({ isAuthenticated: false });
-      }
-      return res.status(200).json({ isAuthenticated: true, user: user });
-    } catch (error) {
-      return res.status(401).json({ isAuthenticated: false, error });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.id).populate({
+      path: "coursesCreated",
+    });
+    if (!user) {
+      return res.status(401).json({ isAuthenticated: false });
     }
+    return res.status(200).json({ isAuthenticated: true, user: user });
   }),
   logout: asyncHandler(async (req, res) => {
     res.cookie("token", "", { maxAge: 1 });

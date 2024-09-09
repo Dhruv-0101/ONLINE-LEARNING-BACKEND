@@ -5,11 +5,9 @@ const User = require("../models/User");
 const Review = require("../models/review");
 
 const courseController = {
-  // Create a new course
   createCourse: asyncHandler(async (req, res) => {
     const { title, description, difficulty, duration, communityLink, price } =
       req.body;
-    //find the user
     const userFound = await User.findById(req.user._id);
     if (!userFound) {
       res.status(404);
@@ -21,13 +19,10 @@ const courseController = {
         "You are not authorized to create a course, instructors only"
       );
     }
-    //Validate course input
     if (!title || !description || !difficulty || !duration) {
       res.status(400);
       throw new Error("Please provide all required fields");
     }
-
-    // Check if course already exists
 
     const courseFound = Course.findOne({ title });
     if (!courseFound) {
@@ -35,7 +30,6 @@ const courseController = {
       throw new Error("Course already exists");
     }
 
-    // Create course
     const course = await Course.create({
       title,
       description,
@@ -45,7 +39,6 @@ const courseController = {
       user: req.user._id,
       price,
     });
-    //push course into user courses
     userFound.coursesCreated.push(course._id);
     await userFound.save();
 
@@ -56,7 +49,6 @@ const courseController = {
       throw new Error("Invalid course data");
     }
   }),
-  // Get all courses
   getAllCourses: asyncHandler(async (req, res) => {
     const courses = await Course.find({})
       .populate({
@@ -68,25 +60,20 @@ const courseController = {
         path: "reviews",
         populate: {
           path: "user",
-          select: "fullname",
+          model: "User",
+          select: "username email",
         },
       });
     res.json(courses);
   }),
-  // Get a single course
   getCourseById: asyncHandler(async (req, res) => {
     const course = await Course.findById(req.params.courseId)
       .populate({
         path: "sections",
         model: "CourseSection",
-        populate: {
-          path: "videos", // Ensure that this field is populated, even though it's embedded.
-          model: "Video", // Optional: If you had a separate model for videos, but in this case, it's embedded.
-        },
       })
       .populate({
         path: "user",
-
         model: "User",
       });
     if (course) {
@@ -96,7 +83,6 @@ const courseController = {
       throw new Error("Course not found");
     }
   }),
-  //update course using mongoose method findByIdAndUpdate
   update: asyncHandler(async (req, res) => {
     const course = await Course.findByIdAndUpdate(
       req.params.courseId,
@@ -113,7 +99,6 @@ const courseController = {
       throw new Error("Course not found");
     }
   }),
-  //delete course using mongoose method findByIdAndDelete
   delete: asyncHandler(async (req, res) => {
     //check if a course has students
     const courseFound = await Course.findById(req.params.courseId);
@@ -130,37 +115,26 @@ const courseController = {
       throw new Error("Course not found");
     }
   }),
-
   checkApplied: asyncHandler(async (req, res) => {
-    try {
-      const { courseId } = req.body; // Ensure courseId is extracted properly
-      const studentId = req.user._id.toString(); // Convert studentId to string
-      console.log(courseId);
-      // Validate courseId format
-      // if (!mongoose.Types.ObjectId.isValid(courseId)) {
-      //   return res.status(400).json({ message: "Invalid course ID" });
-      // }
+    const { courseId } = req.body;
+    const studentId = req.user._id.toString();
 
-      // Find the course by ID
-      const course = await Course.findById(courseId);
+    // Find the course by ID
+    const course = await Course.findById(courseId);
 
-      if (!course) {
-        return res.status(404).json({ message: "Course not found" });
-      }
-
-      // Check if studentId is in the students array
-      const isEnrolled = course.students.includes(studentId);
-
-      return res.status(200).json({
-        isEnrolled,
-        message: isEnrolled
-          ? "Student is already enrolled"
-          : "Student is not enrolled",
-      });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: "Server error" });
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
     }
+
+    // Check if studentId is in the students array
+    const isEnrolled = course.students.includes(studentId);
+
+    return res.status(200).json({
+      isEnrolled,
+      message: isEnrolled
+        ? "Student is already enrolled"
+        : "Student is not enrolled",
+    });
   }),
   checkAllCoursesApplied: asyncHandler(async (req, res) => {
     const userId = req.user._id.toString();
@@ -168,9 +142,6 @@ const courseController = {
     const courses = await Course.find({ students: userId });
 
     if (courses.length === 0) {
-      // return res
-      //   .status(404)
-      //   .json({ message: "No courses found for this user" });
       throw new Error("no course found");
     }
 

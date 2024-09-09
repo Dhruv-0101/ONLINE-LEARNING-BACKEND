@@ -8,13 +8,6 @@ const progressRouter = express.Router();
 
 //get all courses
 progressRouter.get("/", isAuthenticated, progressController.getUserProgress);
-//apply to course
-progressRouter.post(
-  "/apply",
-  isAuthenticated,
-  isStudent,
-  progressController.applyToCourse
-);
 //update course section
 progressRouter.put(
   "/update",

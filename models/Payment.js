@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-//Schema
+
 const paymentSchema = new mongoose.Schema(
   {
     user: {
@@ -36,7 +36,6 @@ const paymentSchema = new mongoose.Schema(
   }
 );
 
-//! Compile to form the model
 const Payment = mongoose.model("Payment", paymentSchema);
 
 module.exports = Payment;

@@ -1,6 +1,5 @@
 const cloudinary = require("cloudinary").v2;
 
-// Configure Cloudinary with your credentials
 cloudinary.config({
   cloud_name: "dksdc3q6y",
   api_key: "116287269373311",
