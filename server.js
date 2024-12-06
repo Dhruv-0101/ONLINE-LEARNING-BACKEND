@@ -14,9 +14,18 @@ connectDB();
 const app = express();
 // Middleware
 
+// const corsOptions = {
+//   origin: ["https://online-learning-frontend-seven.vercel.app"],
+//   credentials: true, // This is important for cookies
+// };
 const corsOptions = {
-  origin: ["https://online-learning-frontend-seven.vercel.app"],
-  credentials: true, // This is important for cookies
+  origin: [
+    "https://online-learning-frontend-seven.vercel.app",
+    "http://localhost:5173",
+  ],
+  credentials: true, // Allow cookies to be sent with requests
+  allowedHeaders: ["Content-Type", "Authorization"], // Allow Authorization header
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed HTTP methods
 };
 
 app.use(cors(corsOptions));
