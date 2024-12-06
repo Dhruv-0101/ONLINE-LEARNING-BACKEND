@@ -2,7 +2,7 @@ const asyncHandler = require("express-async-handler");
 
 const Course = require("../models/Course");
 const User = require("../models/User");
-const Review = require("../models/review");
+const Review = require("../models/Review");
 
 const courseController = {
   createCourse: asyncHandler(async (req, res) => {

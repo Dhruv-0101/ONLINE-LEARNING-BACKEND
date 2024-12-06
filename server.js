@@ -15,7 +15,7 @@ const app = express();
 // Middleware
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  origin: ["https://online-learning-frontend-seven.vercel.app"],
   credentials: true, // This is important for cookies
 };
 
