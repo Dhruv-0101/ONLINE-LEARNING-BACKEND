@@ -91,8 +91,8 @@ const usersController = {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production", // Ensures the cookie is sent only over HTTPS in production
+      sameSite: "None",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -128,14 +128,14 @@ const usersController = {
         const courseProgress = user.progress.find(
           (cp) => cp.courseId && cp.courseId._id.toString() === courseId
         );
-        console.log("courseProgress",courseProgress)
+        console.log("courseProgress", courseProgress);
 
         if (!courseProgress) {
           return null;
         }
 
         const totalSections = courseProgress.courseId.sections.length;
-        console.log(totalSections)
+        console.log(totalSections);
         const sectionsCompleted = courseProgress.sections.filter(
           (section) => section.status === "Completed"
         ).length;
