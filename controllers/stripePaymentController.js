@@ -62,7 +62,8 @@ const stripePaymentController = {
     });
   }),
   verify: asyncHandler(async (req, res) => {
-    const { paymentId } = req.params;
+    // const { paymentId } = req.params;
+    const paymentId = req.params.paymentId;
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentId);
 
     if (paymentIntent.status === "succeeded") {
