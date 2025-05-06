@@ -168,20 +168,46 @@ const courseSectionsController = {
       .json({ message: "Comment added successfully", comment: savedComment });
   }),
 
+  // getAllCommentsForVideo: asyncHandler(async (req, res) => {
+  //   const { videoId } = req.params;
+
+  //   const courseSection = await CourseSection.findOne({
+  //     "videos._id": videoId,
+  //   })
+  //     .populate({
+  //       path: "videos.comments",
+  //       populate: { path: "user", select: "username" }, // Populate user information for comments
+  //     })
+  //     .populate({
+  //       path: "videos.comments",
+  //       populate: { path: "replies.user", select: "username" }, // Populate user information for replies
+  //     });
+
+  //   if (!courseSection) {
+  //     return res.status(404).json({ error: "Video not found" });
+  //   }
+
+  //   const video = courseSection.videos.id(videoId);
+
+  //   if (!video) {
+  //     return res.status(404).json({ error: "Video not found" });
+  //   }
+
+  //   // Respond with the comments for the video
+  //   res.status(200).json(video.comments);
+  // }),
   getAllCommentsForVideo: asyncHandler(async (req, res) => {
     const { videoId } = req.params;
 
     const courseSection = await CourseSection.findOne({
       "videos._id": videoId,
-    })
-      .populate({
-        path: "videos.comments",
-        populate: { path: "user", select: "username" }, // Populate user information for comments
-      })
-      .populate({
-        path: "videos.comments",
-        populate: { path: "replies.user", select: "username" }, // Populate user information for replies
-      });
+    }).populate({
+      path: "videos.comments",
+      populate: [
+        { path: "user", select: "username" },
+        { path: "replies.user", select: "username" },
+      ],
+    });
 
     if (!courseSection) {
       return res.status(404).json({ error: "Video not found" });
@@ -193,8 +219,19 @@ const courseSectionsController = {
       return res.status(404).json({ error: "Video not found" });
     }
 
-    // Respond with the comments for the video
-    res.status(200).json(video.comments);
+    // Sort comments by createdAt descending (latest first)
+    const sortedComments = [...video.comments].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    // Sort replies inside each comment (optional)
+    for (let comment of sortedComments) {
+      comment.replies.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+    }
+
+    res.status(200).json(sortedComments);
   }),
 
   replyToComment: asyncHandler(async (req, res) => {
