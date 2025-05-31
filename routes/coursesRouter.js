@@ -38,5 +38,15 @@ courseRouter.post(
   isAuthenticated,
   courseController.createReview
 );
+courseRouter.post(
+  "/sections/:sectionId/videos/:videoId/notes",
+  isAuthenticated,
+  courseController.addNotesToVideo
+);
+courseRouter.get(
+  "/section/:sectionId/video/:videoId",
+  isAuthenticated,
+  courseController.fetchNotes
+);
 
 module.exports = courseRouter;

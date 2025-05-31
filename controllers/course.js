@@ -3,6 +3,8 @@ const asyncHandler = require("express-async-handler");
 const Course = require("../models/Course");
 const User = require("../models/User");
 const Review = require("../models/Review");
+const CourseSection = require("../models/CourseSection");
+const Note = require("../models/Note");
 
 const courseController = {
   createCourse: asyncHandler(async (req, res) => {
@@ -198,6 +200,87 @@ const courseController = {
       success: true,
       message: "Review created successfully",
     });
+  }),
+  addNotesToVideo: asyncHandler(async (req, res) => {
+    try {
+      const { sectionId, videoId } = req.params;
+      const { timestamp, text } = req.body;
+      const userId = req.user._id;
+
+      // Validate input
+      if (typeof timestamp !== "number" || !text || text.trim() === "") {
+        return res
+          .status(400)
+          .json({ message: "Timestamp and text are required" });
+      }
+
+      // Check if course section exists
+      const courseSection = await CourseSection.findById(sectionId);
+      if (!courseSection) {
+        return res.status(404).json({ message: "Course section not found" });
+      }
+
+      // Check if the videoId exists in the course section's videos array
+      const video = courseSection.videos.id(videoId);
+      if (!video) {
+        return res
+          .status(404)
+          .json({ message: "Video not found in this section" });
+      }
+
+      // Create and save the note in the Note collection
+      const newNote = await Note.create({
+        timestamp,
+        text,
+        sectionId,
+        videoId,
+        createdBy: userId,
+      });
+
+      res.status(201).json({
+        message: "Note added successfully",
+        note: newNote,
+      });
+    } catch (error) {
+      console.error("Error adding note:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }),
+  fetchNotes: asyncHandler(async (req, res) => {
+    try {
+      const { sectionId, videoId } = req.params;
+      const userId = req.user._id;
+
+      // Find the course section
+      const courseSection = await CourseSection.findById(sectionId);
+      if (!courseSection) {
+        return res.status(404).json({ message: "Course section not found" });
+      }
+      console.log("courseSection: ", courseSection);
+
+      // Find the video by ID inside the section's videos array
+      const video = courseSection.videos.id(videoId);
+      if (!video) {
+        return res
+          .status(404)
+          .json({ message: "Video not found in this section" });
+      }
+
+      // Fetch notes related to this video and user
+      const notes = await Note.find({
+        sectionId,
+        videoId,
+        createdBy: userId,
+      }).sort({ timestamp: 1 }); // optional: sort notes by timestamp
+
+      res.status(200).json({
+        video,
+        notes,
+      });
+    } catch (error) {
+      console.error("Error fetching video and notes:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }),
 };
 
