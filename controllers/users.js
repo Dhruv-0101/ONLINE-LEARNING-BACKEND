@@ -378,7 +378,12 @@ User D: 3rd*/
     return res.status(200).json({ isAuthenticated: true, user: user });
   }),
   logout: asyncHandler(async (req, res) => {
-    res.cookie("token", "", { maxAge: 1 });
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+    });
+
     res.status(200).json({ message: "Logged out successfully" });
   }),
 };
