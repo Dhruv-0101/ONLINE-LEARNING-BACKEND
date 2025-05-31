@@ -20,7 +20,7 @@ const app = express();
 // };
 const corsOptions = {
   origin: [
-    "https://online-learning-frontend-seven.vercel.app",
+    "https://online-learning-frontend-dhruvs-projects-aafa8f8d.vercel.app",
     "http://localhost:5173",
   ],
   credentials: true, // Allow cookies to be sent with requests
