@@ -381,7 +381,8 @@ User D: 3rd*/
     res.clearCookie("token", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Must match login
-      sameSite: "strict",
+      sameSite: "None",
+      path: "/",
     });
 
     res.status(200).json({ message: "Logged out successfully" });
