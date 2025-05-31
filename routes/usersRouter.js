@@ -24,6 +24,23 @@ usersRouter.get(
   isAuthenticated,
   usersController.checkAuthenticated
 );
+usersRouter.post(
+  "/addNotification",
+  isAuthenticated,
+  usersController.createCourseNotification
+);
+usersRouter.get(
+  "/getnotifications",
+  isAuthenticated,
+  usersController.getNotificationsByUserId
+);
+// reactQuery/notifications/notificationsAPI.js
+usersRouter.put(
+  "/mark-as-read",
+  isAuthenticated,
+  usersController.markNotificationAsRead
+);
+
 //logout
 usersRouter.post("/logout", usersController.logout);
 //get user by id

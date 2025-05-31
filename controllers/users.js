@@ -4,6 +4,7 @@ const asyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Course = require("../models/Course");
+const Notification = require("../models/Notification");
 
 const usersController = {
   register: asyncHandler(async (req, res) => {
@@ -386,6 +387,74 @@ User D: 3rd*/
     });
 
     res.status(200).json({ message: "Logged out successfully" });
+  }),
+  createCourseNotification: asyncHandler(async (req, res) => {
+    const { courseId, message } = req.body;
+
+    if (!courseId || !message) {
+      return res
+        .status(400)
+        .json({ message: "Course ID and message are required" });
+    }
+
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const notificationMessage = `📢 ${message}`; // 👈 Add icon here
+
+    // Loop through each student and create a notification
+    const notifications = await Promise.all(
+      course.students.map((studentId) =>
+        Notification.create({
+          userId: studentId,
+          courseId: course._id,
+          message: notificationMessage, // 👈 Save with icon
+        })
+      )
+    );
+
+    res.status(201).json({
+      message: "Notifications sent to enrolled students",
+      notifications,
+    });
+  }),
+
+  getNotificationsByUserId: asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+    try {
+      const notifications = await Notification.find({ userId }).sort({
+        createdAt: -1,
+      });
+
+      res.status(200).json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notifications", error });
+    }
+  }),
+  markNotificationAsRead: asyncHandler(async (req, res) => {
+    try {
+      const { notificationId } = req.body; // ✅ Destructure from req.body
+      console.log("Notification ID:", notificationId.notificationId);
+
+      const notification = await Notification.findById(
+        notificationId.notificationId
+      );
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      notification.isRead = true;
+      await notification.save();
+
+      res
+        .status(200)
+        .json({ message: "Notification marked as read", notification });
+    } catch (error) {
+      res.status(500).json({ message: "Server Error", error: error.message });
+    }
   }),
 };
 
