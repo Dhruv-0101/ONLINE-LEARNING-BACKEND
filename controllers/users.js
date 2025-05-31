@@ -385,7 +385,7 @@ User D: 3rd*/
     });
   
     res.status(200).json({ message: "Logged out successfully" });
-  });
+  })
   
 };
 
