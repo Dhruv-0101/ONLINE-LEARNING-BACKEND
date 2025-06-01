@@ -282,6 +282,20 @@ const courseController = {
       res.status(500).json({ message: "Server error" });
     }
   }),
+  getCourseReviews: asyncHandler(async (req, res) => {
+    try {
+      const { courseId } = req.params;
+
+      const reviews = await Review.find({ course: courseId })
+        .populate("user", "username email") // populate user info
+        .sort({ createdAt: -1 }); // newest first
+      console.log("reviews: ", reviews);
+      res.status(200).json(reviews);
+    } catch (error) {
+      console.error("Error fetching course reviews:", error);
+      res.status(500).json({ error: "Failed to fetch course reviews" });
+    }
+  }),
 };
 
 module.exports = courseController;

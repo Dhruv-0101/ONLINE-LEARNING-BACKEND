@@ -48,5 +48,10 @@ courseRouter.get(
   isAuthenticated,
   courseController.fetchNotes
 );
+courseRouter.get(
+  "/course/:courseId",
+  isAuthenticated,
+  courseController.getCourseReviews
+);
 
 module.exports = courseRouter;
