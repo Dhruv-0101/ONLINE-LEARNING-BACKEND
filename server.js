@@ -11,6 +11,14 @@ const progressRouter = require("./routes/progressRouter");
 const stripePaymentRouter = require("./routes/stripePaymentRouter");
 
 connectDB();
+//-------------------for two-step authentication---------------------//
+
+const crypto = require("node:crypto");
+if (!globalThis.crypto) {
+  globalThis.crypto = crypto;
+}
+
+//-------------------for two-step authentication---------------------//
 const app = express();
 // Middleware
 

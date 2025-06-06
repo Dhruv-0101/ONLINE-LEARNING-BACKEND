@@ -5,6 +5,14 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Course = require("../models/Course");
 const Notification = require("../models/Notification");
+const Challenge = require("../models/Challenge");
+const {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} = require("@simplewebauthn/server");
+const Buffer = require("buffer").Buffer;
 
 const usersController = {
   register: asyncHandler(async (req, res) => {
@@ -93,7 +101,7 @@ const usersController = {
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures the cookie is sent only over HTTPS in production
-      sameSite: "None",
+      sameSite: "Lax",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -455,6 +463,189 @@ User D: 3rd*/
     } catch (error) {
       res.status(500).json({ message: "Server Error", error: error.message });
     }
+  }),
+  registerUserPasskeyCtrl: asyncHandler(async (req, res) => {
+    const userId = req.user;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found!" });
+    }
+
+    const challengePayload = await generateRegistrationOptions({
+      rpID: "localhost",
+      rpName: "My Localhost Machine",
+      attestationType: "none",
+      userName: user.username,
+      timeout: 60000,
+    });
+
+    await Challenge.create({
+      userId,
+      challenge: challengePayload.challenge,
+      loginpasskey: false,
+    });
+
+    return res.json({ options: challengePayload });
+  }),
+
+  registerPasskeyVerifyCtrl: asyncHandler(async (req, res) => {
+    const userId = req.user;
+    const { cred } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) throw new Error("User not found");
+
+    const challenge = await Challenge.findOne({
+      userId,
+      loginpasskey: false,
+    }).sort({ createdAt: -1 });
+
+    if (!challenge) throw new Error("Challenge not found");
+
+    const verificationResult = await verifyRegistrationResponse({
+      expectedChallenge: challenge.challenge,
+      expectedOrigin: "http://localhost:5173",
+      expectedRPID: "localhost",
+      response: cred,
+    });
+
+    if (!verificationResult.verified) {
+      return res.json({ error: "Could not verify" });
+    }
+
+    const registrationInfo = verificationResult.registrationInfo;
+    const publicKeyBase64 = Buffer.from(
+      registrationInfo.credential.publicKey
+    ).toString("base64");
+
+    const updatedCredential = {
+      ...registrationInfo.credential,
+      publicKey: publicKeyBase64,
+      counter: registrationInfo.credential.counter ?? 0,
+    };
+
+    await Challenge.findByIdAndUpdate(challenge._id, {
+      passkey: {
+        ...registrationInfo,
+        credential: updatedCredential,
+      },
+    });
+
+    res.json({ verified: true });
+  }),
+
+  loginUserPassKey: asyncHandler(async (req, res) => {
+    const { username } = req.body;
+
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ error: "User not found!" });
+    }
+
+    await Challenge.deleteMany({
+      passkey: null,
+    });
+
+    const opts = await generateAuthenticationOptions({
+      rpID: "localhost",
+    });
+
+    await Challenge.create({
+      userId: user._id,
+      challenge: opts.challenge,
+      loginpasskey: true,
+    });
+
+    return res.json({ options: opts });
+  }),
+
+  loginPassKeyVerifyCtrl: asyncHandler(async (req, res) => {
+    const { username, cred } = req.body;
+
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: "User not found!" });
+
+    const challenge = await Challenge.findOne({
+      userId: user._id,
+      loginpasskey: true,
+    });
+
+    if (!challenge)
+      return res.status(404).json({ error: "Challenge not found!" });
+
+    await Challenge.deleteMany({
+      passkey: null,
+    });
+
+    const passkeys = await Challenge.find({
+      userId: user._id,
+      loginpasskey: false,
+    });
+
+    if (!passkeys.length)
+      return res.status(404).json({ error: "No passkey found!" });
+
+    let verified = false;
+
+    for (const item of passkeys) {
+      const passkey = item.passkey;
+      if (!passkey || !passkey.credential) continue;
+
+      const publicKeyBuffer = Buffer.from(
+        passkey.credential.publicKey,
+        "base64"
+      );
+      console.log("passsssssssssskeyyyyyyyyyyyyyyyyyyyy", passkey);
+      console.log(
+        "counterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+        passkey.credential.counter
+      );
+
+      try {
+        const result = await verifyAuthenticationResponse({
+          expectedChallenge: challenge.challenge,
+          expectedOrigin: "http://localhost:5173",
+          expectedRPID: "localhost",
+          response: cred,
+          credential: {
+            id: passkey.credential.credentialID,
+            publicKey: publicKeyBuffer,
+            counter: passkey.credential.counter ?? 0,
+          },
+        });
+
+        if (result.verified) {
+          verified = true;
+
+          // Update counter in DB to prevent replay attacks
+          await Challenge.findByIdAndUpdate(item._id, {
+            "passkey.credential.counter": result.authenticationInfo.newCounter,
+          });
+
+          break;
+        }
+      } catch (err) {
+        console.error("Verification error:", err);
+      }
+    }
+
+    if (!verified) {
+      return res.json({ error: "Authentication verification failed" });
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "3d",
+    });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "Lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ success: true });
   }),
 };
 

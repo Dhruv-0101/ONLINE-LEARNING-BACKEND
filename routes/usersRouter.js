@@ -40,6 +40,26 @@ usersRouter.put(
   isAuthenticated,
   usersController.markNotificationAsRead
 );
+usersRouter.post(
+  "/register-passkey",
+  isAuthenticated,
+  usersController.registerUserPasskeyCtrl
+);
+usersRouter.post(
+  "/register-passkey-verify",
+  isAuthenticated,
+  usersController.registerPasskeyVerifyCtrl
+);
+usersRouter.post(
+  "/login-passkey",
+  // isAuthenticated,
+  usersController.loginUserPassKey
+);
+usersRouter.post(
+  "/login-passkey-verify",
+  // isAuthenticated,
+  usersController.loginPassKeyVerifyCtrl
+);
 
 //logout
 usersRouter.post("/logout", usersController.logout);
