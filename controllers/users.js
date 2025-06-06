@@ -101,7 +101,7 @@ const usersController = {
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures the cookie is sent only over HTTPS in production
-      sameSite: "Lax",
+      sameSite: "None",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -473,8 +473,8 @@ User D: 3rd*/
     }
 
     const challengePayload = await generateRegistrationOptions({
-      rpID: "localhost",
-      rpName: "My Localhost Machine",
+      rpID: "online-learning-frontend-seven.vercel.app",
+      rpName: "Online Learning",
       attestationType: "none",
       userName: user.username,
       timeout: 60000,
@@ -505,8 +505,8 @@ User D: 3rd*/
 
     const verificationResult = await verifyRegistrationResponse({
       expectedChallenge: challenge.challenge,
-      expectedOrigin: "http://localhost:5173",
-      expectedRPID: "localhost",
+      expectedOrigin: "https://online-learning-frontend-seven.vercel.app",
+      expectedRPID: "online-learning-frontend-seven.vercel.app",
       response: cred,
     });
 
@@ -548,7 +548,7 @@ User D: 3rd*/
     });
 
     const opts = await generateAuthenticationOptions({
-      rpID: "localhost",
+      rpID: "online-learning-frontend-seven.vercel.app", // CHANGED
     });
 
     await Challenge.create({
@@ -605,8 +605,8 @@ User D: 3rd*/
       try {
         const result = await verifyAuthenticationResponse({
           expectedChallenge: challenge.challenge,
-          expectedOrigin: "http://localhost:5173",
-          expectedRPID: "localhost",
+          expectedOrigin: "https://online-learning-frontend-seven.vercel.app",
+          expectedRPID: "online-learning-frontend-seven.vercel.app",
           response: cred,
           credential: {
             id: passkey.credential.credentialID,
@@ -640,8 +640,8 @@ User D: 3rd*/
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false,
-      sameSite: "Lax",
+      secure: true,
+      sameSite: "None",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
