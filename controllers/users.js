@@ -486,7 +486,7 @@ User D: 3rd*/
     }
   }),
   registerUserPasskeyCtrl: asyncHandler(async (req, res) => {
-    const userId = req.user;
+    const userId = req.user._id;
     const user = await User.findById(userId);
 
     if (!user) {
@@ -501,6 +501,9 @@ User D: 3rd*/
       timeout: 60000,
     });
 
+    // Clear any previous registration challenges for this user to avoid conflicts
+    await Challenge.deleteMany({ userId, loginpasskey: false, passkey: null });
+
     await Challenge.create({
       userId,
       challenge: challengePayload.challenge,
@@ -511,7 +514,7 @@ User D: 3rd*/
   }),
 
   registerPasskeyVerifyCtrl: asyncHandler(async (req, res) => {
-    const userId = req.user;
+    const userId = req.user._id;
     const { cred } = req.body;
 
     const user = await User.findById(userId);
@@ -536,21 +539,23 @@ User D: 3rd*/
     }
 
     const registrationInfo = verificationResult.registrationInfo;
+
+    // Ensure we capture the credential correctly
     const publicKeyBase64 = Buffer.from(
-      registrationInfo.credential.publicKey,
+      registrationInfo.credentialPublicKey,
     ).toString("base64");
 
-    const updatedCredential = {
-      ...registrationInfo.credential,
+    const passkeyData = {
+      credentialID: Buffer.from(registrationInfo.credentialID).toString(
+        "base64",
+      ),
       publicKey: publicKeyBase64,
-      counter: registrationInfo.credential.counter ?? 0,
+      counter: registrationInfo.counter ?? 0,
+      fmt: registrationInfo.fmt,
     };
 
     await Challenge.findByIdAndUpdate(challenge._id, {
-      passkey: {
-        ...registrationInfo,
-        credential: updatedCredential,
-      },
+      passkey: passkeyData,
     });
 
     res.json({ verified: true });
@@ -611,17 +616,9 @@ User D: 3rd*/
 
     for (const item of passkeys) {
       const passkey = item.passkey;
-      if (!passkey || !passkey.credential) continue;
+      if (!passkey || !passkey.publicKey) continue;
 
-      const publicKeyBuffer = Buffer.from(
-        passkey.credential.publicKey,
-        "base64",
-      );
-      console.log("passsssssssssskeyyyyyyyyyyyyyyyyyyyy", passkey);
-      console.log(
-        "counterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
-        passkey.credential.counter,
-      );
+      const publicKeyBuffer = Buffer.from(passkey.publicKey, "base64");
 
       try {
         const result = await verifyAuthenticationResponse({
@@ -630,9 +627,9 @@ User D: 3rd*/
           expectedRPID: "online-learning-frontend-seven.vercel.app",
           response: cred,
           credential: {
-            id: passkey.credential.credentialID,
+            id: passkey.credentialID,
             publicKey: publicKeyBuffer,
-            counter: passkey.credential.counter ?? 0,
+            counter: passkey.counter ?? 0,
           },
         });
 
@@ -641,7 +638,7 @@ User D: 3rd*/
 
           // Update counter in DB to prevent replay attacks
           await Challenge.findByIdAndUpdate(item._id, {
-            "passkey.credential.counter": result.authenticationInfo.newCounter,
+            "passkey.counter": result.authenticationInfo.newCounter,
           });
 
           break;
