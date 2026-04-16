@@ -493,6 +493,11 @@ User D: 3rd*/
       return res.status(404).json({ error: "User not found!" });
     }
 
+    const passkeys = await Challenge.find({
+      userId: user._id,
+      loginpasskey: false,
+    });
+
     const rpID = process.env.RP_ID || "localhost";
     const challengePayload = await generateRegistrationOptions({
       rpID: rpID,
@@ -503,10 +508,16 @@ User D: 3rd*/
       attestationType: "none",
       timeout: 60000,
       authenticatorSelection: {
-        authenticatorAttachment: "platform", // Forces the use of Windows Hello/PIN/TouchID
         residentKey: "required",
         userVerification: "required",
       },
+      excludeCredentials: passkeys
+        .filter((p) => p.passkey && p.passkey.credentialID)
+        .map((p) => ({
+          id: p.passkey.credentialID,
+          type: "public-key",
+          transports: p.passkey.transports,
+        })),
     });
 
     // Clear any previous registration challenges for this user to avoid conflicts
@@ -547,26 +558,14 @@ User D: 3rd*/
     }
 
     const { registrationInfo } = verificationResult;
-
-    // Defensive extraction of public key and ID
-    const rawPublicKey =
-      registrationInfo.credentialPublicKey ||
-      (registrationInfo.credential && registrationInfo.credential.publicKey);
-    const rawCredentialID =
-      registrationInfo.credentialID ||
-      (registrationInfo.credential && registrationInfo.credential.id);
-
-    if (!rawPublicKey || !rawCredentialID) {
-      return res.status(500).json({
-        error: "Invalid registration info received from authenticator",
-      });
-    }
+    const { credentialID, credentialPublicKey, counter, fmt } =
+      registrationInfo;
 
     const passkeyData = {
-      credentialID: Buffer.from(rawCredentialID).toString("base64url"),
-      publicKey: Buffer.from(rawPublicKey).toString("base64url"),
-      counter: registrationInfo.counter ?? 0,
-      fmt: registrationInfo.fmt,
+      credentialID: Buffer.from(credentialID).toString("base64url"),
+      publicKey: Buffer.from(credentialPublicKey).toString("base64url"),
+      counter: counter ?? 0,
+      fmt: fmt,
     };
 
     await Challenge.findByIdAndUpdate(challenge._id, {
