@@ -493,14 +493,20 @@ User D: 3rd*/
       return res.status(404).json({ error: "User not found!" });
     }
 
+    const rpID = process.env.RP_ID || "localhost";
     const challengePayload = await generateRegistrationOptions({
-      rpID: "online-learning-frontend-seven.vercel.app",
+      rpID: rpID,
       rpName: "Online Learning",
       userID: Buffer.from(user._id.toString()),
       userName: user.username,
       userDisplayName: user.username,
       attestationType: "none",
       timeout: 60000,
+      authenticatorSelection: {
+        authenticatorAttachment: "platform", // Forces the use of Windows Hello/PIN/TouchID
+        residentKey: "required",
+        userVerification: "required",
+      },
     });
 
     // Clear any previous registration challenges for this user to avoid conflicts
@@ -531,8 +537,8 @@ User D: 3rd*/
 
     const verificationResult = await verifyRegistrationResponse({
       expectedChallenge: challenge.challenge,
-      expectedOrigin: "https://online-learning-frontend-seven.vercel.app",
-      expectedRPID: "online-learning-frontend-seven.vercel.app",
+      expectedOrigin: process.env.FRONTEND_URL || "http://localhost:5173",
+      expectedRPID: process.env.RP_ID || "localhost",
       response: cred,
     });
 
@@ -588,13 +594,13 @@ User D: 3rd*/
     });
 
     const opts = await generateAuthenticationOptions({
-      rpID: "online-learning-frontend-seven.vercel.app",
+      rpID: process.env.RP_ID || "localhost",
       allowCredentials: passkeys.map((p) => ({
         id: p.passkey.credentialID,
         type: "public-key",
         transports: p.passkey.transports,
       })),
-      userVerification: "preferred",
+      userVerification: "required",
     });
 
     // Clean up old login challenges
@@ -646,8 +652,8 @@ User D: 3rd*/
       try {
         const result = await verifyAuthenticationResponse({
           expectedChallenge: challenge.challenge,
-          expectedOrigin: "https://online-learning-frontend-seven.vercel.app",
-          expectedRPID: "online-learning-frontend-seven.vercel.app",
+          expectedOrigin: process.env.FRONTEND_URL || "http://localhost:5173",
+          expectedRPID: process.env.RP_ID || "localhost",
           response: cred,
           credential: {
             id: passkey.credentialID,
