@@ -135,7 +135,7 @@ const usersController = {
     let userProgressData = users
       .map((user) => {
         const courseProgress = user.progress.find(
-          (cp) => cp.courseId && cp.courseId._id.toString() === courseId
+          (cp) => cp.courseId && cp.courseId._id.toString() === courseId,
         );
         console.log("courseProgress", courseProgress);
 
@@ -146,7 +146,7 @@ const usersController = {
         const totalSections = courseProgress.courseId.sections.length;
         console.log(totalSections);
         const sectionsCompleted = courseProgress.sections.filter(
-          (section) => section.status === "Completed"
+          (section) => section.status === "Completed",
         ).length;
         const progressPercentage =
           totalSections > 0
@@ -291,7 +291,7 @@ User D: 3rd*/
 
     const courseProgress = courseIdParam
       ? user?.progress?.find(
-          (p) => p.courseId?._id?.toString() === courseIdParam
+          (p) => p.courseId?._id?.toString() === courseIdParam,
         )
       : null;
 
@@ -363,6 +363,11 @@ User D: 3rd*/
     });
 
     const response = {
+      user: {
+        username: user.username,
+        email: user.email,
+        _id: user._id,
+      },
       totalCourses: user.progress.length,
       coursesProgress,
     };
@@ -420,8 +425,8 @@ User D: 3rd*/
           userId: studentId,
           courseId: course._id,
           message: notificationMessage, // 👈 Save with icon
-        })
-      )
+        }),
+      ),
     );
 
     res.status(201).json({
@@ -448,7 +453,7 @@ User D: 3rd*/
       console.log("Notification ID:", notificationId.notificationId);
 
       const notification = await Notification.findById(
-        notificationId.notificationId
+        notificationId.notificationId,
       );
       if (!notification) {
         return res.status(404).json({ message: "Notification not found" });
@@ -460,6 +465,22 @@ User D: 3rd*/
       res
         .status(200)
         .json({ message: "Notification marked as read", notification });
+    } catch (error) {
+      res.status(500).json({ message: "Server Error", error: error.message });
+    }
+  }),
+  markAllNotificationsAsRead: asyncHandler(async (req, res) => {
+    try {
+      const userId = req.user._id;
+      const result = await Notification.updateMany(
+        { userId: userId, isRead: false },
+        { $set: { isRead: true } },
+      );
+
+      res.status(200).json({
+        message: "All notifications marked as read",
+        count: result.modifiedCount,
+      });
     } catch (error) {
       res.status(500).json({ message: "Server Error", error: error.message });
     }
@@ -516,7 +537,7 @@ User D: 3rd*/
 
     const registrationInfo = verificationResult.registrationInfo;
     const publicKeyBase64 = Buffer.from(
-      registrationInfo.credential.publicKey
+      registrationInfo.credential.publicKey,
     ).toString("base64");
 
     const updatedCredential = {
@@ -594,12 +615,12 @@ User D: 3rd*/
 
       const publicKeyBuffer = Buffer.from(
         passkey.credential.publicKey,
-        "base64"
+        "base64",
       );
       console.log("passsssssssssskeyyyyyyyyyyyyyyyyyyyy", passkey);
       console.log(
         "counterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
-        passkey.credential.counter
+        passkey.credential.counter,
       );
 
       try {

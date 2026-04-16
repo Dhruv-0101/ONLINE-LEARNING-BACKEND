@@ -17,48 +17,53 @@ usersRouter.get("/position/:courseId", usersController.getAllUsers);
 usersRouter.get(
   "/profile/private",
   isAuthenticated,
-  usersController.privateProfile
+  usersController.privateProfile,
 );
 usersRouter.get(
   "/checkAuthenticated",
   isAuthenticated,
-  usersController.checkAuthenticated
+  usersController.checkAuthenticated,
 );
 usersRouter.post(
   "/addNotification",
   isAuthenticated,
-  usersController.createCourseNotification
+  usersController.createCourseNotification,
 );
 usersRouter.get(
   "/getnotifications",
   isAuthenticated,
-  usersController.getNotificationsByUserId
+  usersController.getNotificationsByUserId,
 );
 // reactQuery/notifications/notificationsAPI.js
 usersRouter.put(
   "/mark-as-read",
   isAuthenticated,
-  usersController.markNotificationAsRead
+  usersController.markNotificationAsRead,
+);
+usersRouter.put(
+  "/mark-all-as-read",
+  isAuthenticated,
+  usersController.markAllNotificationsAsRead,
 );
 usersRouter.post(
   "/register-passkey",
   isAuthenticated,
-  usersController.registerUserPasskeyCtrl
+  usersController.registerUserPasskeyCtrl,
 );
 usersRouter.post(
   "/register-passkey-verify",
   isAuthenticated,
-  usersController.registerPasskeyVerifyCtrl
+  usersController.registerPasskeyVerifyCtrl,
 );
 usersRouter.post(
   "/login-passkey",
   // isAuthenticated,
-  usersController.loginUserPassKey
+  usersController.loginUserPassKey,
 );
 usersRouter.post(
   "/login-passkey-verify",
   // isAuthenticated,
-  usersController.loginPassKeyVerifyCtrl
+  usersController.loginPassKeyVerifyCtrl,
 );
 
 //logout
