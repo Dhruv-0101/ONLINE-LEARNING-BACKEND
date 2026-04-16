@@ -490,23 +490,17 @@ User D: 3rd*/
     const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found!" });
+      return res.status(404).json({ error: "User not found!" });
     }
 
-    const rpID = "online-learning-frontend-seven.vercel.app";
     const challengePayload = await generateRegistrationOptions({
-      rpID,
+      rpID: "online-learning-frontend-seven.vercel.app",
       rpName: "Online Learning",
       userID: Buffer.from(user._id.toString()),
       userName: user.username,
       userDisplayName: user.username,
       attestationType: "none",
       timeout: 60000,
-      authenticatorSelection: {
-        residentKey: "required",
-        userVerification: "required",
-        authenticatorAttachment: "platform",
-      },
     });
 
     // Clear any previous registration challenges for this user to avoid conflicts
@@ -535,20 +529,15 @@ User D: 3rd*/
 
     if (!challenge) throw new Error("Challenge not found");
 
-    const expectedOrigin = "https://online-learning-frontend-seven.vercel.app";
-    const expectedRPID = "online-learning-frontend-seven.vercel.app";
     const verificationResult = await verifyRegistrationResponse({
       expectedChallenge: challenge.challenge,
-      expectedOrigin,
-      expectedRPID,
+      expectedOrigin: "https://online-learning-frontend-seven.vercel.app",
+      expectedRPID: "online-learning-frontend-seven.vercel.app",
       response: cred,
-      requireUserVerification: true,
     });
 
     if (!verificationResult.verified) {
-      return res
-        .status(400)
-        .json({ message: "Could not verify passkey registration" });
+      return res.json({ error: "Could not verify" });
     }
 
     const { registrationInfo } = verificationResult;
@@ -572,7 +561,6 @@ User D: 3rd*/
       publicKey: Buffer.from(rawPublicKey).toString("base64url"),
       counter: registrationInfo.counter ?? 0,
       fmt: registrationInfo.fmt,
-      transports: cred.response.transports || [],
     };
 
     await Challenge.findByIdAndUpdate(challenge._id, {
@@ -587,30 +575,26 @@ User D: 3rd*/
 
     const user = await User.findOne({ username });
     if (!user) {
-      return res.status(404).json({ message: "User not found!" });
+      return res.status(404).json({ error: "User not found!" });
     }
 
     await Challenge.deleteMany({
-      userId: user._id,
       passkey: null,
     });
 
     const passkeys = await Challenge.find({
       userId: user._id,
       loginpasskey: false,
-      passkey: { $ne: null },
     });
-    console.log(`Found ${passkeys.length} passkeys for user ${user._id}`);
 
-    const rpID = "online-learning-frontend-seven.vercel.app";
     const opts = await generateAuthenticationOptions({
-      rpID,
+      rpID: "online-learning-frontend-seven.vercel.app",
       allowCredentials: passkeys.map((p) => ({
         id: p.passkey.credentialID,
         type: "public-key",
         transports: p.passkey.transports,
       })),
-      userVerification: "required",
+      userVerification: "preferred",
     });
 
     // Clean up old login challenges
@@ -629,7 +613,7 @@ User D: 3rd*/
     const { username, cred } = req.body;
 
     const user = await User.findOne({ username });
-    if (!user) return res.status(404).json({ message: "User not found!" });
+    if (!user) return res.status(404).json({ error: "User not found!" });
 
     const challenge = await Challenge.findOne({
       userId: user._id,
@@ -637,82 +621,72 @@ User D: 3rd*/
     });
 
     if (!challenge)
-      return res
-        .status(404)
-        .json({ message: "Authentication challenge not found!" });
+      return res.status(404).json({ error: "Challenge not found!" });
 
     await Challenge.deleteMany({
-      userId: user._id,
       passkey: null,
     });
 
     const passkeys = await Challenge.find({
       userId: user._id,
       loginpasskey: false,
-      passkey: { $ne: null },
     });
-    console.log(`Verifying login: Found ${passkeys.length} passkeys to check`);
 
     if (!passkeys.length)
-      return res
-        .status(404)
-        .json({ message: "No passkeys registered for this account!" });
+      return res.status(404).json({ error: "No passkey found!" });
 
-    // Find the specific passkey used in this authentication request
-    const item = passkeys.find((p) => p.passkey.credentialID === cred.id);
-    if (!item) {
-      return res.status(404).json({
-        message: "The passkey used is not registered to this account!",
-      });
-    }
+    let verified = false;
 
-    const passkey = item.passkey;
-    const publicKeyBuffer = Buffer.from(passkey.publicKey, "base64url");
+    for (const item of passkeys) {
+      const passkey = item.passkey;
+      if (!passkey || !passkey.publicKey) continue;
 
-    try {
-      const expectedOrigin =
-        "https://online-learning-frontend-seven.vercel.app";
-      const expectedRPID = "online-learning-frontend-seven.vercel.app";
-      const result = await verifyAuthenticationResponse({
-        expectedChallenge: challenge.challenge,
-        expectedOrigin,
-        expectedRPID,
-        response: cred,
-        credential: {
-          id: passkey.credentialID,
-          publicKey: publicKeyBuffer,
-          counter: passkey.counter ?? 0,
-        },
-        requireUserVerification: true,
-      });
+      const publicKeyBuffer = Buffer.from(passkey.publicKey, "base64url");
 
-      if (result.verified) {
-        // Update counter in DB to prevent replay attacks
-        await Challenge.findByIdAndUpdate(item._id, {
-          "passkey.counter": result.authenticationInfo.newCounter,
+      try {
+        const result = await verifyAuthenticationResponse({
+          expectedChallenge: challenge.challenge,
+          expectedOrigin: "https://online-learning-frontend-seven.vercel.app",
+          expectedRPID: "online-learning-frontend-seven.vercel.app",
+          response: cred,
+          credential: {
+            id: passkey.credentialID,
+            publicKey: publicKeyBuffer,
+            counter: passkey.counter ?? 0,
+          },
         });
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-          expiresIn: "3d",
-        });
+        if (result.verified) {
+          verified = true;
 
-        res.cookie("token", token, {
-          httpOnly: true,
-          secure: true,
-          sameSite: "None",
-          maxAge: 24 * 60 * 60 * 1000,
-        });
+          // Update counter in DB to prevent replay attacks
+          await Challenge.findByIdAndUpdate(item._id, {
+            "passkey.counter": result.authenticationInfo.newCounter,
+          });
 
-        return res.json({ success: true });
-      } else {
-        return res.status(401).json({ message: "Passkey verification failed" });
+          break;
+        }
+      } catch (err) {
+        console.error("Verification error:", err);
       }
-    } catch (err) {
-      console.error("Verification error:", err);
-      return res
-        .status(500)
-        .json({ message: "Internal server error during verification" });
     }
+
+    if (!verified) {
+      return res.json({ error: "Authentication verification failed" });
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "3d",
+    });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ success: true });
   }),
 };
 
