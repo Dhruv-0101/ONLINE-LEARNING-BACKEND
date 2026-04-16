@@ -585,12 +585,14 @@ User D: 3rd*/
     }
 
     await Challenge.deleteMany({
+      userId: user._id,
       passkey: null,
     });
 
     const passkeys = await Challenge.find({
       userId: user._id,
       loginpasskey: false,
+      passkey: { $ne: null },
     });
 
     const opts = await generateAuthenticationOptions({
@@ -630,12 +632,14 @@ User D: 3rd*/
       return res.status(404).json({ error: "Challenge not found!" });
 
     await Challenge.deleteMany({
+      userId: user._id,
       passkey: null,
     });
 
     const passkeys = await Challenge.find({
       userId: user._id,
       loginpasskey: false,
+      passkey: { $ne: null },
     });
 
     if (!passkeys.length)
