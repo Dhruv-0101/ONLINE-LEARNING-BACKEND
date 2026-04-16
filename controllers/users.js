@@ -496,8 +496,10 @@ User D: 3rd*/
     const challengePayload = await generateRegistrationOptions({
       rpID: "online-learning-frontend-seven.vercel.app",
       rpName: "Online Learning",
-      attestationType: "none",
+      userID: Buffer.from(user._id.toString()),
       userName: user.username,
+      userDisplayName: user.username,
+      attestationType: "none",
       timeout: 60000,
     });
 
@@ -549,16 +551,14 @@ User D: 3rd*/
       (registrationInfo.credential && registrationInfo.credential.id);
 
     if (!rawPublicKey || !rawCredentialID) {
-      return res
-        .status(500)
-        .json({
-          error: "Invalid registration info received from authenticator",
-        });
+      return res.status(500).json({
+        error: "Invalid registration info received from authenticator",
+      });
     }
 
     const passkeyData = {
-      credentialID: Buffer.from(rawCredentialID).toString("base64"),
-      publicKey: Buffer.from(rawPublicKey).toString("base64"),
+      credentialID: Buffer.from(rawCredentialID).toString("base64url"),
+      publicKey: Buffer.from(rawPublicKey).toString("base64url"),
       counter: registrationInfo.counter ?? 0,
       fmt: registrationInfo.fmt,
     };
@@ -582,9 +582,23 @@ User D: 3rd*/
       passkey: null,
     });
 
-    const opts = await generateAuthenticationOptions({
-      rpID: "online-learning-frontend-seven.vercel.app", // CHANGED
+    const passkeys = await Challenge.find({
+      userId: user._id,
+      loginpasskey: false,
     });
+
+    const opts = await generateAuthenticationOptions({
+      rpID: "online-learning-frontend-seven.vercel.app",
+      allowCredentials: passkeys.map((p) => ({
+        id: p.passkey.credentialID,
+        type: "public-key",
+        transports: p.passkey.transports,
+      })),
+      userVerification: "preferred",
+    });
+
+    // Clean up old login challenges
+    await Challenge.deleteMany({ userId: user._id, loginpasskey: true });
 
     await Challenge.create({
       userId: user._id,
@@ -627,7 +641,7 @@ User D: 3rd*/
       const passkey = item.passkey;
       if (!passkey || !passkey.publicKey) continue;
 
-      const publicKeyBuffer = Buffer.from(passkey.publicKey, "base64");
+      const publicKeyBuffer = Buffer.from(passkey.publicKey, "base64url");
 
       try {
         const result = await verifyAuthenticationResponse({
