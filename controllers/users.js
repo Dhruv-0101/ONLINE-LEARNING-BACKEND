@@ -486,42 +486,20 @@ User D: 3rd*/
     }
   }),
   registerUserPasskeyCtrl: asyncHandler(async (req, res) => {
-    const userId = req.user._id;
+    const userId = req.user;
     const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: "User not found!" });
     }
 
-    const passkeys = await Challenge.find({
-      userId: user._id,
-      loginpasskey: false,
-    });
-
-    const rpID = process.env.RP_ID || "localhost";
     const challengePayload = await generateRegistrationOptions({
-      rpID: rpID,
+      rpID: "online-learning-frontend-seven.vercel.app",
       rpName: "Online Learning",
-      userID: Buffer.from(user._id.toString()),
-      userName: user.username,
-      userDisplayName: user.username,
       attestationType: "none",
+      userName: user.username,
       timeout: 60000,
-      authenticatorSelection: {
-        residentKey: "required",
-        userVerification: "required",
-      },
-      excludeCredentials: passkeys
-        .filter((p) => p.passkey && p.passkey.credentialID)
-        .map((p) => ({
-          id: p.passkey.credentialID,
-          type: "public-key",
-          transports: p.passkey.transports,
-        })),
     });
-
-    // Clear any previous registration challenges for this user to avoid conflicts
-    await Challenge.deleteMany({ userId, loginpasskey: false, passkey: null });
 
     await Challenge.create({
       userId,
@@ -533,7 +511,7 @@ User D: 3rd*/
   }),
 
   registerPasskeyVerifyCtrl: asyncHandler(async (req, res) => {
-    const userId = req.user._id;
+    const userId = req.user;
     const { cred } = req.body;
 
     const user = await User.findById(userId);
@@ -548,8 +526,8 @@ User D: 3rd*/
 
     const verificationResult = await verifyRegistrationResponse({
       expectedChallenge: challenge.challenge,
-      expectedOrigin: process.env.FRONTEND_URL || "http://localhost:5173",
-      expectedRPID: process.env.RP_ID || "localhost",
+      expectedOrigin: "https://online-learning-frontend-seven.vercel.app",
+      expectedRPID: "online-learning-frontend-seven.vercel.app",
       response: cred,
     });
 
@@ -557,19 +535,22 @@ User D: 3rd*/
       return res.json({ error: "Could not verify" });
     }
 
-    const { registrationInfo } = verificationResult;
-    const { credentialID, credentialPublicKey, counter, fmt } =
-      registrationInfo;
+    const registrationInfo = verificationResult.registrationInfo;
+    const publicKeyBase64 = Buffer.from(
+      registrationInfo.credential.publicKey,
+    ).toString("base64");
 
-    const passkeyData = {
-      credentialID: Buffer.from(credentialID).toString("base64url"),
-      publicKey: Buffer.from(credentialPublicKey).toString("base64url"),
-      counter: counter ?? 0,
-      fmt: fmt,
+    const updatedCredential = {
+      ...registrationInfo.credential,
+      publicKey: publicKeyBase64,
+      counter: registrationInfo.credential.counter ?? 0,
     };
 
     await Challenge.findByIdAndUpdate(challenge._id, {
-      passkey: passkeyData,
+      passkey: {
+        ...registrationInfo,
+        credential: updatedCredential,
+      },
     });
 
     res.json({ verified: true });
@@ -587,23 +568,9 @@ User D: 3rd*/
       passkey: null,
     });
 
-    const passkeys = await Challenge.find({
-      userId: user._id,
-      loginpasskey: false,
-    });
-
     const opts = await generateAuthenticationOptions({
-      rpID: process.env.RP_ID || "localhost",
-      allowCredentials: passkeys.map((p) => ({
-        id: p.passkey.credentialID,
-        type: "public-key",
-        transports: p.passkey.transports,
-      })),
-      userVerification: "required",
+      rpID: "online-learning-frontend-seven.vercel.app", // CHANGED
     });
-
-    // Clean up old login challenges
-    await Challenge.deleteMany({ userId: user._id, loginpasskey: true });
 
     await Challenge.create({
       userId: user._id,
@@ -644,20 +611,28 @@ User D: 3rd*/
 
     for (const item of passkeys) {
       const passkey = item.passkey;
-      if (!passkey || !passkey.publicKey) continue;
+      if (!passkey || !passkey.credential) continue;
 
-      const publicKeyBuffer = Buffer.from(passkey.publicKey, "base64url");
+      const publicKeyBuffer = Buffer.from(
+        passkey.credential.publicKey,
+        "base64",
+      );
+      console.log("passsssssssssskeyyyyyyyyyyyyyyyyyyyy", passkey);
+      console.log(
+        "counterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+        passkey.credential.counter,
+      );
 
       try {
         const result = await verifyAuthenticationResponse({
           expectedChallenge: challenge.challenge,
-          expectedOrigin: process.env.FRONTEND_URL || "http://localhost:5173",
-          expectedRPID: process.env.RP_ID || "localhost",
+          expectedOrigin: "https://online-learning-frontend-seven.vercel.app",
+          expectedRPID: "online-learning-frontend-seven.vercel.app",
           response: cred,
           credential: {
-            id: passkey.credentialID,
+            id: passkey.credential.credentialID,
             publicKey: publicKeyBuffer,
-            counter: passkey.counter ?? 0,
+            counter: passkey.credential.counter ?? 0,
           },
         });
 
@@ -666,7 +641,7 @@ User D: 3rd*/
 
           // Update counter in DB to prevent replay attacks
           await Challenge.findByIdAndUpdate(item._id, {
-            "passkey.counter": result.authenticationInfo.newCounter,
+            "passkey.credential.counter": result.authenticationInfo.newCounter,
           });
 
           break;
