@@ -501,6 +501,11 @@ User D: 3rd*/
       userDisplayName: user.username,
       attestationType: "none",
       timeout: 60000,
+      authenticatorSelection: {
+        residentKey: "required",
+        userVerification: "required",
+        authenticatorAttachment: "platform",
+      },
     });
 
     // Clear any previous registration challenges for this user to avoid conflicts
@@ -561,6 +566,7 @@ User D: 3rd*/
       publicKey: Buffer.from(rawPublicKey).toString("base64url"),
       counter: registrationInfo.counter ?? 0,
       fmt: registrationInfo.fmt,
+      transports: cred.response.transports || [],
     };
 
     await Challenge.findByIdAndUpdate(challenge._id, {
@@ -594,7 +600,7 @@ User D: 3rd*/
         type: "public-key",
         transports: p.passkey.transports,
       })),
-      userVerification: "preferred",
+      userVerification: "required",
     });
 
     // Clean up old login challenges
