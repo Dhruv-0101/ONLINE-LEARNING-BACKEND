@@ -538,18 +538,27 @@ User D: 3rd*/
       return res.json({ error: "Could not verify" });
     }
 
-    const registrationInfo = verificationResult.registrationInfo;
+    const { registrationInfo } = verificationResult;
 
-    // Ensure we capture the credential correctly
-    const publicKeyBase64 = Buffer.from(
-      registrationInfo.credentialPublicKey,
-    ).toString("base64");
+    // Defensive extraction of public key and ID
+    const rawPublicKey =
+      registrationInfo.credentialPublicKey ||
+      (registrationInfo.credential && registrationInfo.credential.publicKey);
+    const rawCredentialID =
+      registrationInfo.credentialID ||
+      (registrationInfo.credential && registrationInfo.credential.id);
+
+    if (!rawPublicKey || !rawCredentialID) {
+      return res
+        .status(500)
+        .json({
+          error: "Invalid registration info received from authenticator",
+        });
+    }
 
     const passkeyData = {
-      credentialID: Buffer.from(registrationInfo.credentialID).toString(
-        "base64",
-      ),
-      publicKey: publicKeyBase64,
+      credentialID: Buffer.from(rawCredentialID).toString("base64"),
+      publicKey: Buffer.from(rawPublicKey).toString("base64"),
       counter: registrationInfo.counter ?? 0,
       fmt: registrationInfo.fmt,
     };
