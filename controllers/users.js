@@ -450,11 +450,9 @@ User D: 3rd*/
   markNotificationAsRead: asyncHandler(async (req, res) => {
     try {
       const { notificationId } = req.body; // ✅ Destructure from req.body
-      console.log("Notification ID:", notificationId.notificationId);
+      console.log("Notification ID:", notificationId);
 
-      const notification = await Notification.findById(
-        notificationId.notificationId,
-      );
+      const notification = await Notification.findById(notificationId);
       if (!notification) {
         return res.status(404).json({ message: "Notification not found" });
       }
