@@ -88,10 +88,15 @@ const usersController = {
     }
   }),
   login: asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
       throw new Error("Invalid email or password");
+    }
+
+    if (role && user.role !== role) {
+      res.status(403);
+      throw new Error("Login failed: Invalid role for this login portal");
     }
 
     const token = jwt.sign({ id: user?._id }, process.env.JWT_SECRET, {
